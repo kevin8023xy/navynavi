@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy-950: #0a1628;
+  --color-navy-900: #0f2042;
+  --color-navy-800: #162d5a;
+  --color-navy-700: #1e3a6e;
+  --color-navy-600: #264a85;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Animated gradient background */
+.ocean-bg {
+  background: linear-gradient(135deg, #0a1628 0%, #0f2042 25%, #162d5a 50%, #0f2042 75%, #0a1628 100%);
+  background-size: 400% 400%;
+  animation: oceanShift 15s ease infinite;
+}
+
+@keyframes oceanShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Floating wave particles */
+.wave-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.08);
+  animation: floatUp linear infinite;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% {
+    transform: translateY(-100vh) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* Card glass effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(59, 130, 246, 0.15), 0 0 40px rgba(59, 130, 246, 0.08);
+}
+
+/* Glow text */
+.glow-text {
+  text-shadow: 0 0 40px rgba(59, 130, 246, 0.5), 0 0 80px rgba(59, 130, 246, 0.2);
+}
+
+/* Icon glow on hover */
+.icon-glow {
+  transition: all 0.4s ease;
+}
+
+.glass-card:hover .icon-glow {
+  color: #93c5fd;
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.6));
+}
+
+/* ── Console Page Styles (light theme) ── */
+
+.maplibregl-canvas {
+  outline: none;
+}
+
+/* ── iOS Frosted Glass Component Classes ── */
+
+.ios-glass-btn {
+  @apply border border-white/40 bg-white/20 backdrop-blur-sm text-slate-700;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 3px rgba(0,0,0,0.04);
+}
+.ios-glass-btn:hover {
+  @apply bg-white/35 border-white/55;
+}
+.ios-glass-btn:active {
+  @apply bg-white/15 scale-[0.97];
+}
+
+.ios-glass-btn-icon {
+  @apply border border-white/40 bg-white/15 backdrop-blur-sm text-slate-600/70 flex items-center justify-center transition-all duration-150;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 1px 3px rgba(0,0,0,0.03);
+}
+.ios-glass-btn-icon:hover {
+  @apply bg-white/30 text-slate-700/90 border-white/55;
+}
+.ios-glass-btn-icon:active {
+  @apply bg-white/10 scale-[0.92];
+}
+
+.ios-glass-input {
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.06), 0 1px 0 rgba(255,255,255,0.4);
+}
+.ios-glass-input:hover {
+  @apply bg-white/30 border-white/50;
+}
+.ios-glass-input:focus {
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.08), 0 0 0 2px rgba(59,130,246,0.25), 0 1px 0 rgba(255,255,255,0.5);
+}
+.ios-glass-input::-webkit-calendar-picker-indicator {
+  opacity: 0.45;
+  cursor: pointer;
+  filter: none !important;
+  transition: opacity 0.15s ease;
+}
+.ios-glass-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.8;
+}
+
+/* Maplibre controls — light style matching screenshot */
+.maplibregl-ctrl-group {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.maplibregl-ctrl-group button {
+  opacity: 0.7 !important;
+}
+.maplibregl-ctrl-group button:hover {
+  opacity: 1 !important;
+}
+
+.maplibregl-ctrl-attrib {
+  background: transparent !important;
+  font-size: 9px !important;
+}
+.maplibregl-ctrl-attrib a {
+  color: rgba(100, 116, 139, 0.6) !important;
+}
