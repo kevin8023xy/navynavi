@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Ship, Anchor } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import bgImage from '../assets/bg.jpg'
+import logoImage from '../assets/logo.webp'
 
 const NAV_ITEMS = [
   {
@@ -17,48 +19,15 @@ const NAV_ITEMS = [
   },
 ] as const
 
-function WaveParticles() {
-  const [particles] = useState(() =>
-    Array.from({ length: 20 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      size: Math.random() * 6 + 2,
-      duration: Math.random() * 15 + 10,
-      delay: Math.random() * 15,
-    }))
-  )
-
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="wave-particle"
-          style={{
-            left: `${p.left}%`,
-            bottom: '-10px',
-            width: `${p.size}px`,
-            height: `${p.size}px`,
-            animationDuration: `${p.duration}s`,
-            animationDelay: `${p.delay}s`,
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
 function NavCard({ title, description, href, icon: Icon }: typeof NAV_ITEMS[number]) {
   return (
     <Link
       to={href}
-      className="glass-card group block p-8 rounded-2xl text-center no-underline"
+      className="group block p-8 rounded-2xl bg-white/10 backdrop-blur-lg border border-white/20 transition-all duration-300 hover:bg-white/20 hover:scale-105 no-underline"
     >
-      <div className="flex justify-center mb-4">
-        <Icon className="icon-glow w-16 h-16 text-blue-300" strokeWidth={1.5} />
-      </div>
+      <Icon className="w-16 h-16 mb-4 text-blue-300 group-hover:text-blue-200" strokeWidth={1.5} />
       <h2 className="text-2xl font-semibold mb-2 text-white">{title}</h2>
-      <p className="text-blue-200 text-sm leading-relaxed">{description}</p>
+      <p className="text-blue-200">{description}</p>
     </Link>
   )
 }
@@ -72,43 +41,41 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="ocean-bg min-h-screen relative flex flex-col">
-      <WaveParticles />
+    <main className="min-h-screen bg-linear-to-br from-blue-950 via-blue-700 to-blue-500 flex items-center justify-center p-4 relative">
+      {/* Background image — faint overlay */}
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-20"
+        style={{ backgroundImage: `url(${bgImage})` }}
+      />
 
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-16 relative z-10">
-        <header
-          className={`text-center mb-16 transition-all duration-1000 ${
-            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
-        >
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Anchor className="w-10 h-10 text-blue-400" strokeWidth={1.5} />
-            <h1 className="text-5xl md:text-7xl font-bold text-white glow-text tracking-tight">
-              NavyNavi
-            </h1>
-          </div>
-          <p className="text-blue-300 text-lg tracking-widest uppercase">
-            Vessel Traffic Management System
-          </p>
-          <div className="mt-4 inline-block bg-blue-500/20 text-blue-200 text-xs px-3 py-1 rounded-full border border-blue-400/30">
-            Version 0.6.2
-          </div>
+      {/* Content */}
+      <div
+        className={`relative z-10 w-full max-w-6xl mx-auto text-white transition-all duration-1000 ${
+          mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+        }`}
+      >
+        <header className="flex flex-col items-center text-center my-8 md:my-32">
+          <img
+            alt="NavyNavi"
+            src={logoImage}
+            width={128}
+            height={128}
+            className="mb-8"
+          />
+          <h1 className="font-heading text-3xl md:text-5xl font-bold mb-4 tracking-wide">NavyNavi</h1>
+          <p className="text-base text-blue-200">Version 0.6.2</p>
         </header>
 
-        <div
-          className={`grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl w-full transition-all duration-1000 delay-300 ${
-            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
-        >
+        <div className="grid md:grid-cols-2 gap-8 mx-6">
           {NAV_ITEMS.map((item) => (
             <NavCard key={item.title} {...item} />
           ))}
         </div>
-      </main>
 
-      <footer className="mt-8 md:mt-24 text-center text-sm text-blue-200/70 pb-8 relative z-10">
-        <p>Copyright &copy; 2024-2026 NavyNavi Team. All rights reserved.</p>
-      </footer>
-    </div>
+        <footer className="mt-8 md:mt-24 text-center text-sm text-blue-200">
+          <p>Copyright &copy; 2024-2026 NavyNavi Team. All rights reserved.</p>
+        </footer>
+      </div>
+    </main>
   )
 }
