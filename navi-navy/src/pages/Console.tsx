@@ -73,8 +73,7 @@ export default function Console() {
     if (!mapContainer.current || map.current) return
 
     try {
-      const MAPBOX_TOKEN =
-        '***REMOVED***'
+      const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN ?? ''
 
       const m = new maplibregl.Map({
         container: mapContainer.current,
