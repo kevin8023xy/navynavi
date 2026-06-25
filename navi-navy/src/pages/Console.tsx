@@ -311,7 +311,7 @@ export default function Console() {
         source: 'ships',
         layout: {
           'icon-image': 'ship-icon',
-          'icon-size': 0.08,
+          'icon-size': 0.04,
           'icon-allow-overlap': true,
           'icon-rotate': ['get', 'cog'],
           'icon-rotation-alignment': 'map',
