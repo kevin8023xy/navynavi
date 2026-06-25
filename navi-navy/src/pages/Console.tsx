@@ -17,8 +17,10 @@ import {
 } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import compassIcon from '../assets/compass.png'
 
 const PLAYBACK_SPEEDS = ['0.5x', '1x', '2x', '5x', '10x', '50x', '100x']
+const API_BASE = '/api'
 
 const TOOLS_MENU = [
   { label: 'AIS Codec', submenu: ['Encoder', 'Decoder'] },
@@ -53,11 +55,26 @@ export default function Console() {
   const endTimeRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Initialize map — light blue nautical style matching the screenshot
+  // Data & playback
+  const [allTracks, setAllTracks] = useState<any[]>([])
+  const [playbackTime, setPlaybackTime] = useState<number>(0) // unix timestamp
+  const playbackTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startUnix = Math.floor(new Date(startTime).getTime() / 1000)
+  const endUnix = Math.floor(new Date(endTime).getTime() / 1000)
+  const totalDuration = Math.max(1, endUnix - startUnix)
+  const playbackPercent = allTracks.length > 0
+    ? Math.min(100, Math.max(0, ((playbackTime - startUnix) / totalDuration) * 100))
+    : 0
+
+  // ── Initialize map with CARTO basemap + Mapbox vector overlay ──
   useEffect(() => {
     if (!mapContainer.current || map.current) return
 
     try {
+      const MAPBOX_TOKEN =
+        '***REMOVED***'
+
       const m = new maplibregl.Map({
         container: mapContainer.current,
         style: {
@@ -81,7 +98,7 @@ export default function Console() {
             },
           ],
         },
-        center: [118.05, 24.45],
+        center: [121.863873, 40.242037],
         zoom: 9.5,
         attributionControl: false,
       })
@@ -98,12 +115,82 @@ export default function Console() {
       })
 
       m.on('load', () => {
-        console.log('[Map] Loaded successfully. Canvas:', m.getCanvas())
+        console.log('[Map] Basemap loaded, adding custom tilesets…')
+
+        // 加载船舶图标（用 Image 对象更可靠）
+        const img = new Image()
+        img.onload = () => {
+          if (!m.hasImage('ship-icon')) {
+            m.addImage('ship-icon', img)
+            console.log('[Map] Ship icon loaded:', img.width, 'x', img.height)
+          }
+        }
+        img.onerror = () => console.warn('[Map] Failed to load ship icon')
+        img.src = compassIcon
+
+        const tilesetIds = [
+          '9zmxcsih', '9hg1rjmh', 'aodinnmf', '20gt82m7',
+          'dntm19bq', 'd5eml1db', 'b7x708bt', 'bcxlucqt',
+          '18ksrpzm', '4sap4ro3', '13hr208n', '2qu2v5ef',
+          '9ryul5ol', '9qacc1x4', '63c62biw',
+        ]
+        const palette = [
+          '#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6',
+          '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+          '#14b8a6', '#e11d48', '#0ea5e9', '#a855f7', '#eab308',
+        ]
+
+        const tileJSONUrl =
+          `https://api.mapbox.com/v4/` +
+          tilesetIds.map((id) => `cfan.${id}`).join(',') +
+          `.json?secure&access_token=${MAPBOX_TOKEN}`
+
+        fetch(tileJSONUrl)
+          .then((res) => {
+            if (!res.ok) throw new Error(`TileJSON ${res.status}`)
+            return res.json()
+          })
+          .then((tj) => {
+            m.addSource('cfan-custom', {
+              type: 'vector',
+              tiles: tj.tiles,
+              minzoom: tj.minzoom ?? 0,
+              maxzoom: tj.maxzoom ?? 14,
+            })
+
+            tilesetIds.forEach((ts, i) => {
+              m.addLayer({
+                id: `cfan-${ts}-fill`,
+                type: 'fill',
+                source: 'cfan-custom',
+                'source-layer': ts,
+                paint: {
+                  'fill-color': palette[i],
+                  'fill-opacity': 0.35,
+                  'fill-outline-color': '#1e293b',
+                },
+              })
+              m.addLayer({
+                id: `cfan-${ts}-line`,
+                type: 'line',
+                source: 'cfan-custom',
+                'source-layer': ts,
+                paint: {
+                  'line-color': '#1e293b',
+                  'line-width': 1.5,
+                },
+              })
+            })
+
+            console.log('[Map] Custom tilesets loaded:', tilesetIds.length)
+          })
+          .catch((err) => {
+            console.warn('[Map] Failed to load custom tilesets:', err)
+          })
       })
 
       map.current = m
 
-      // Debug: check container dimensions
       const rect = mapContainer.current.getBoundingClientRect()
       console.log('[Map] Container size:', rect.width, 'x', rect.height)
     } catch (e) {
@@ -150,30 +237,139 @@ export default function Console() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [speedOpen])
 
+  // ── Playback engine ──
+  useEffect(() => {
+    if (!isPlaying) {
+      if (playbackTimerRef.current) {
+        clearInterval(playbackTimerRef.current)
+        playbackTimerRef.current = null
+      }
+      return
+    }
+
+    const speedMultiplier = parseFloat(speed.replace('x', ''))
+    const tickMs = 100 // 每 100ms 更新一次
+    const stepSec = (tickMs / 1000) * speedMultiplier * intervalSec
+
+    playbackTimerRef.current = setInterval(() => {
+      setPlaybackTime((prev) => {
+        const next = prev + stepSec
+        if (next >= endUnix) {
+          setIsPlaying(false)
+          return endUnix
+        }
+        return next
+      })
+    }, tickMs)
+
+    return () => {
+      if (playbackTimerRef.current) {
+        clearInterval(playbackTimerRef.current)
+        playbackTimerRef.current = null
+      }
+    }
+  }, [isPlaying, speed, intervalSec, endUnix])
+
+  // ── Update map ships layer based on playbackTime ──
+  useEffect(() => {
+    if (!map.current || allTracks.length === 0) return
+
+    const currentEnd = playbackTime + Number(intervalSec)
+    const active = allTracks.filter(
+      (t) => t.timestamp >= playbackTime && t.timestamp < currentEnd
+    )
+
+    const geojson: any = {
+      type: 'FeatureCollection',
+      features: active.map((r) => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [r.lng, r.lat],
+        },
+        properties: {
+          mmsi: r.mmsi,
+          sog: r.sog,
+          cog: r.cog,
+        },
+      })),
+    }
+
+    const source = map.current.getSource('ships') as any
+    if (source) {
+      source.setData(geojson)
+    } else {
+      map.current.addSource('ships', {
+        type: 'geojson',
+        data: geojson,
+      })
+      map.current.addLayer({
+        id: 'ships-points',
+        type: 'symbol',
+        source: 'ships',
+        layout: {
+          'icon-image': 'ship-icon',
+          'icon-size': 0.08,
+          'icon-allow-overlap': true,
+          'icon-rotate': ['get', 'cog'],
+          'icon-rotation-alignment': 'map',
+        },
+      })
+    }
+  }, [playbackTime, allTracks, intervalSec])
+
   const handleQueryData = async () => {
     setIsLoading(true)
-    setLoadProgress(0)
-    // Simulate progress
-    const interval = setInterval(() => {
-      setLoadProgress((prev) => {
-        if (prev >= 99) {
-          clearInterval(interval)
-          return 99
-        }
-        return prev + Math.random() * 15
-      })
-    }, 200)
-    await new Promise((r) => setTimeout(r, 2500))
-    clearInterval(interval)
-    setLoadProgress(0)
-    setIsLoading(false)
+    setLoadProgress(5)
+    setError(null)
+    setAllTracks([])
+
+    const s = Math.floor(new Date(startTime).getTime() / 1000)
+    const e = Math.floor(new Date(endTime).getTime() / 1000)
+
+    let progress = 5
+    const progressInterval = setInterval(() => {
+      progress += Math.random() * 8 + 2
+      if (progress > 90) progress = 90
+      setLoadProgress(progress)
+    }, 80)
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/tracks?start_time=${s}&end_time=${e}&page=1&page_size=500000`
+      )
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+
+      clearInterval(progressInterval)
+      setLoadProgress(100)
+      setAllTracks(data.data || [])
+      setPlaybackTime(s)
+    } catch (err: any) {
+      clearInterval(progressInterval)
+      setLoadProgress(100)
+      setError(err?.message || 'Failed to query data')
+    } finally {
+      setTimeout(() => {
+        setIsLoading(false)
+        setLoadProgress(0)
+      }, 1000)
+    }
   }
 
-  const handlePlayPause = () => setIsPlaying(!isPlaying)
+  const handlePlayPause = () => {
+    if (allTracks.length === 0) return
+    setIsPlaying(!isPlaying)
+  }
 
   const handleStop = () => {
     setIsPlaying(false)
-    setLoadProgress(0)
+    setPlaybackTime(startUnix)
+  }
+
+  const handleReset = () => {
+    setIsPlaying(false)
+    setPlaybackTime(startUnix)
   }
 
   const formatTime = (value: string) => {
@@ -186,6 +382,14 @@ export default function Console() {
     const min = String(d.getMinutes()).padStart(2, '0')
     const s = String(d.getSeconds()).padStart(2, '0')
     return `${y}/${m}/${day} ${h}:${min}:${s}`
+  }
+
+  const formatPlaybackTime = (unix: number) => {
+    const d = new Date(unix * 1000)
+    const h = String(d.getHours()).padStart(2, '0')
+    const m = String(d.getMinutes()).padStart(2, '0')
+    const s = String(d.getSeconds()).padStart(2, '0')
+    return `${h}:${m}:${s}`
   }
 
   return (
@@ -268,13 +472,13 @@ export default function Console() {
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-30">
           <div className="text-center p-6 rounded-lg bg-white shadow-lg border border-red-200">
-            <p className="text-red-500 text-sm font-medium mb-1">Map Error</p>
+            <p className="text-red-500 text-sm font-medium mb-1">Error</p>
             <p className="text-slate-400 text-xs">{error}</p>
           </div>
         </div>
       )}
 
-      {/* ── Bottom-Left Control Panel — shadcn/ui Style ── */}
+      {/* ── Bottom-Left Control Panel ── */}
       <div className="absolute bottom-4 left-4 z-999 bg-background/50 backdrop-blur-sm w-[calc(100%-2rem)] max-w-[627px] rounded-xl border shadow-lg border-none p-4">
         <div className="grid grid-cols-2 gap-3 mb-4">
           {/* Start Time */}
@@ -402,6 +606,7 @@ export default function Console() {
           </button>
           <button
             onClick={handlePlayPause}
+            disabled={allTracks.length === 0}
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground hover:bg-primary/90 h-9 py-2 px-6 bg-primary/85 shadow-2xl"
             title={isPlaying ? 'Pause' : 'Play'}
           >
@@ -425,7 +630,8 @@ export default function Console() {
             <Square className="h-4 w-4" />
           </button>
           <button
-            disabled={!isPlaying && loadProgress === 0}
+            onClick={handleReset}
+            disabled={allTracks.length === 0}
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground hover:bg-primary/90 h-9 py-2 px-6 bg-primary/85 shadow-2xl"
             title="Reset"
           >
@@ -452,29 +658,47 @@ export default function Console() {
           </button>
         </div>
 
-        {/* Progress slider */}
-        {(isLoading || loadProgress > 0) && (
-          <div className="space-y-2">
+        {/* Loading progress */}
+        {isLoading && (
+          <div className="space-y-2 mb-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium">
-                {isLoading ? 'Loading...' : 'Complete'}
-              </span>
-              <span className="text-xs">
-                {Math.min(Math.round(loadProgress), 100)}%
-              </span>
+              <span className="text-xs font-medium">Loading...</span>
+              <span className="text-xs">{Math.min(Math.round(loadProgress), 100)}%</span>
             </div>
             <div className="relative flex w-full touch-none select-none items-center grow shadow-2xl">
               <div className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-primary/20">
                 <div
                   className="absolute h-full bg-primary transition-all duration-200 ease-out"
-                  style={{ width: `${Math.min(loadProgress, 99)}%` }}
+                  style={{ width: `${Math.min(loadProgress, 100)}%` }}
                 />
               </div>
               <div
                 className="absolute block h-4 w-4 rounded-full border border-primary/50 bg-background shadow transition-colors"
-                style={{ left: `calc(${Math.min(loadProgress, 99)}% - 8px)` }}
+                style={{ left: `calc(${Math.min(loadProgress, 100)}% - 8px)` }}
               />
             </div>
+          </div>
+        )}
+
+        {/* Playback progress - draggable */}
+        {allTracks.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium">{formatPlaybackTime(playbackTime)}</span>
+              <span className="text-xs">{Math.round(playbackPercent)}%</span>
+            </div>
+            <input
+              type="range"
+              min={startUnix}
+              max={endUnix}
+              step={intervalSec}
+              value={playbackTime}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10)
+                setPlaybackTime(v)
+              }}
+              className="w-full h-1.5 cursor-pointer accent-primary"
+            />
           </div>
         )}
       </div>
