@@ -59,6 +59,7 @@ export default function Console() {
   const [allTracks, setAllTracks] = useState<any[]>([])
   const [playbackTime, setPlaybackTime] = useState<number>(0) // unix timestamp
   const playbackTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [iconLoaded, setIconLoaded] = useState(false)
 
   const startUnix = Math.floor(new Date(startTime).getTime() / 1000)
   const endUnix = Math.floor(new Date(endTime).getTime() / 1000)
@@ -124,6 +125,7 @@ export default function Console() {
             m.addImage('ship-icon', img)
             console.log('[Map] Ship icon loaded:', img.width, 'x', img.height)
           }
+          setIconLoaded(true)
         }
         img.onerror = () => console.warn('[Map] Failed to load ship icon')
         img.src = compassIcon
@@ -272,7 +274,7 @@ export default function Console() {
 
   // ── Update map ships layer based on playbackTime ──
   useEffect(() => {
-    if (!map.current || allTracks.length === 0) return
+    if (!map.current || allTracks.length === 0 || !iconLoaded) return
 
     const currentEnd = playbackTime + Number(intervalSec)
     const active = allTracks.filter(
@@ -290,7 +292,7 @@ export default function Console() {
         properties: {
           mmsi: r.mmsi,
           sog: r.sog,
-          cog: r.cog,
+          cog: (r.cog != null && r.cog !== 511) ? r.cog : 0,
         },
       })),
     }
@@ -316,7 +318,7 @@ export default function Console() {
         },
       })
     }
-  }, [playbackTime, allTracks, intervalSec])
+  }, [playbackTime, allTracks, intervalSec, iconLoaded])
 
   const handleQueryData = async () => {
     setIsLoading(true)
