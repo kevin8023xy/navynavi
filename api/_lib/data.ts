@@ -1,5 +1,8 @@
-import fs from 'fs';
-import path from 'path';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const records = require('./records.json') as any[];
+
 
 // ============================================================
 // 类型定义
@@ -43,109 +46,30 @@ export interface TrackResult {
 }
 
 // ============================================================
-// 模块级缓存
+// 模块级缓存：JSON 在模块加载时由 Node 解析一次，后续直接复用
 // ============================================================
-let cachedRecords: ShipRecord[] | null = null;
-
-const CSV_FILENAME =
-  'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
-
-function findCsvPath(): string {
-  // Vercel 打包后文件会放在 /var/task/ 或 /var/task/api/ 下，
-  // 本地则在项目根目录或 api/ 目录下。多路径尝试确保都能找到。
-  const candidates = [
-    path.join(process.cwd(), CSV_FILENAME),
-    path.join(process.cwd(), 'api', CSV_FILENAME),
-    path.join('/var/task', CSV_FILENAME),
-    path.join('/var/task', 'api', CSV_FILENAME),
-  ];
-
-  for (const p of candidates) {
-    if (fs.existsSync(p)) {
-      console.log('[Data] Found CSV at:', p);
-      return p;
-    }
-  }
-
-  throw new Error(
-    `CSV not found. CWD=${process.cwd()}. Tried: ${candidates.join(', ')}`,
-  );
-}
-
-function parseCSV(): ShipRecord[] {
-  const csvPath = findCsvPath();
-  console.log('[Data] Reading CSV from:', csvPath);
-
-  const raw = fs.readFileSync(csvPath, 'utf-8');
-  const lines = raw.trim().split(/\r?\n/);
-
-  if (lines.length === 0) throw new Error('CSV is empty');
-
-  // 解析表头找到列索引
-  const headers = lines[0].split(',').map((h) => h.trim());
-  const colIdx = {
-    mmsi: headers.indexOf('MMSI'),
-    lat: headers.indexOf('Latitude'),
-    lng: headers.indexOf('Longitude'),
-    sog: headers.indexOf('Speed Over Ground (SOG)'),
-    cog: headers.indexOf('Course Over Ground (COG)'),
-    heading: headers.indexOf('True Heading'),
-    status: headers.indexOf('Navigational Status'),
-    tsUnix: headers.indexOf('Timestamp (Unix)'),
-    tsIso: headers.indexOf('Timestamp (ISO)'),
-  };
-
-  const records: ShipRecord[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim()) continue;
-
-    const cols = line.split(',');
-    const ts = parseInt(cols[colIdx.tsUnix], 10);
-    if (isNaN(ts)) continue;
-
-    records.push({
-      mmsi: parseInt(cols[colIdx.mmsi], 10) || 0,
-      lat: parseFloat(cols[colIdx.lat]) || 0,
-      lng: parseFloat(cols[colIdx.lng]) || 0,
-      sog: cols[colIdx.sog] ? parseFloat(cols[colIdx.sog]) : null,
-      cog: cols[colIdx.cog] ? parseFloat(cols[colIdx.cog]) : null,
-      heading: cols[colIdx.heading]
-        ? parseFloat(cols[colIdx.heading])
-        : null,
-      status: cols[colIdx.status]
-        ? parseInt(cols[colIdx.status], 10)
-        : null,
-      timestamp: ts,
-      iso: cols[colIdx.tsIso] || '',
-    });
-  }
-
-  records.sort((a, b) => a.timestamp - b.timestamp);
-  return records;
-}
+const cachedRecords: ShipRecord[] = (records as any[]).map((r) => ({
+  mmsi: r.mmsi,
+  lat: r.lat,
+  lng: r.lng,
+  sog: r.sog,
+  cog: r.cog,
+  heading: r.heading,
+  status: r.status,
+  timestamp: r.timestamp,
+  iso: new Date(r.timestamp * 1000).toISOString(),
+}));
 
 // ---- 公共 API ----
 
 export function getAllRecords(): ShipRecord[] {
-  if (!cachedRecords) {
-    console.log('[Data] Loading CSV...');
-    const start = Date.now();
-    cachedRecords = parseCSV();
-    const ships = new Set(cachedRecords.map((r) => r.mmsi)).size;
-    console.log(
-      `[Data] Loaded ${cachedRecords.length} records, ${ships} ships in ${Date.now() - start}ms`,
-    );
-  }
   return cachedRecords;
 }
 
 export function getShipsLatest(): ShipLatest[] {
-  const records = getAllRecords();
   const latestMap = new Map<number, ShipRecord>();
 
-  for (const r of records) {
+  for (const r of cachedRecords) {
     const existing = latestMap.get(r.mmsi);
     if (!existing || r.timestamp > existing.timestamp) {
       latestMap.set(r.mmsi, r);
@@ -164,8 +88,7 @@ export function getShipsLatest(): ShipLatest[] {
 }
 
 export function queryTracks(q: TrackQuery): TrackResult {
-  const records = getAllRecords();
-  let filtered = records;
+  let filtered = cachedRecords;
 
   // MMSI 筛选
   if (q.mmsi) {

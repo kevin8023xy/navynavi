@@ -33,7 +33,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
         parseInt((typeof page === 'string' ? page : '1'), 10) || 1,
       ),
       page_size: Math.min(
-        500000,
+        10000,
         Math.max(
           1,
           parseInt((typeof page_size === 'string' ? page_size : '500'), 10) ||

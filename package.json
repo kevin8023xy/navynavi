@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "prebuild": "node scripts/build-data.js",
     "preview": "vite preview"
   },
   "dependencies": {
-    "csv-parser": "^3.0.0",
     "lucide-react": "^1.17.0",
     "maplibre-gl": "^5.24.0",
     "react": "^19.2.7",

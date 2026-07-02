@@ -13,6 +13,9 @@ node_modules/
 dist/
 dist-ssr/
 
+# Generated data
+api/_lib/records.json
+
 # Logs
 logs
 *.log
@@ -30,3 +33,4 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
