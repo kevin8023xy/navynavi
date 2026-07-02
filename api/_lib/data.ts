@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import csv from 'csv-parser';
+import { fileURLToPath } from 'url';
 
 // ============================================================
 // 类型定义
@@ -50,17 +51,42 @@ export interface TrackResult {
 let cachedRecords: ShipRecord[] | null = null;
 let loadPromise: Promise<ShipRecord[]> | null = null;
 
+const CSV_FILENAME =
+  'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
+
 function resolveCsvPath(): string {
-  return path.join(
-    process.cwd(),
-    'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv',
-  );
+  // 1) 优先使用当前文件相对路径（Vercel 打包后也能保持相对位置）
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.resolve(currentDir, '..', '..', CSV_FILENAME), // api/_lib -> project root
+    path.resolve(currentDir, '..', CSV_FILENAME),        // 备选
+    path.join(process.cwd(), CSV_FILENAME),              // 本地 dev 兜底
+    path.join('/var/task', CSV_FILENAME),                // Vercel 运行时兜底
+  ];
+
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // 都尝试不到，返回最后一个候选路径，让后续报错信息里显示出来
+  return candidates[candidates.length - 1];
 }
 
 function loadFromCSV(): Promise<ShipRecord[]> {
   return new Promise((resolve, reject) => {
     const records: ShipRecord[] = [];
     const csvPath = resolveCsvPath();
+
+    console.log('[Data] CSV path:', csvPath);
+    console.log('[Data] CWD:', process.cwd());
+
+    if (!fs.existsSync(csvPath)) {
+      const err = new Error(
+        `CSV not found: ${csvPath}. CWD=${process.cwd()}, ENV=${process.env.VERCEL_ENV || 'local'}`,
+      );
+      console.error(err.message);
+      return reject(err);
+    }
 
     fs.createReadStream(csvPath)
       .pipe(csv())
@@ -182,3 +208,4 @@ export async function queryTracks(q: TrackQuery): Promise<TrackResult> {
 
   return { total, page: q.page, page_size: q.page_size, data };
 }
+
