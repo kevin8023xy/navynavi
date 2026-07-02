@@ -6,8 +6,7 @@
   "functions": {
     "api/*.ts": {
       "maxDuration": 10,
-      "memory": 512,
-      "includeFiles": "ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv"
+      "memory": 512
     }
   },
   "rewrites": [
@@ -17,4 +16,5 @@
     }
   ]
 }
+
 

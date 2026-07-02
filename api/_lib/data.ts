@@ -3,6 +3,10 @@ import path from 'path';
 import csv from 'csv-parser';
 import { fileURLToPath } from 'url';
 
+// ESM 下补全 __dirname（Vercel 的 @vercel/nft 能正确追踪这种写法）
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // ============================================================
 // 类型定义
 // ============================================================
@@ -55,21 +59,17 @@ const CSV_FILENAME =
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
 
 function resolveCsvPath(): string {
-  // 1) 优先使用当前文件相对路径（Vercel 打包后也能保持相对位置）
-  const currentDir = path.dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    path.resolve(currentDir, '..', '..', CSV_FILENAME), // api/_lib -> project root
-    path.resolve(currentDir, '..', CSV_FILENAME),        // 备选
-    path.join(process.cwd(), CSV_FILENAME),              // 本地 dev 兜底
-    path.join('/var/task', CSV_FILENAME),                // Vercel 运行时兜底
-  ];
+  // CSV 在 api/ 目录下，data.ts 在 api/_lib/，往上跳一层就是 CSV 所在位置
+  // Vercel 的 @vercel/nft 捆包器能静态分析 path.resolve(__dirname, '..', ...) 这种模式
+  const primaryPath = path.resolve(__dirname, '..', CSV_FILENAME);
+  if (fs.existsSync(primaryPath)) return primaryPath;
 
-  for (const p of candidates) {
-    if (fs.existsSync(p)) return p;
-  }
+  // 兜底：本地运行时尝试项目根目录
+  const fallback = path.resolve(__dirname, '..', '..', CSV_FILENAME);
+  if (fs.existsSync(fallback)) return fallback;
 
-  // 都尝试不到，返回最后一个候选路径，让后续报错信息里显示出来
-  return candidates[candidates.length - 1];
+  console.error('[Data] CSV not found. Tried:', primaryPath, fallback);
+  throw new Error(`CSV file not found at ${primaryPath}`);
 }
 
 function loadFromCSV(): Promise<ShipRecord[]> {
