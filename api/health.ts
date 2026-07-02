@@ -1,8 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAllRecords } from './_lib/data';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS
+export default function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -16,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const records = await getAllRecords();
+    const records = getAllRecords();
     return res.json({
       status: 'ok',
       total: records.length,
@@ -24,6 +23,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err: any) {
     console.error('[health] Error:', err);
-    return res.status(500).json({ error: err?.message || 'Internal server error' });
+    return res
+      .status(500)
+      .json({ error: err?.message || 'Internal server error' });
   }
 }

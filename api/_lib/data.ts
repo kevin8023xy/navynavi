@@ -1,11 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import csv from 'csv-parser';
-import { fileURLToPath } from 'url';
-
-// ESM 下补全 __dirname（Vercel 的 @vercel/nft 能正确追踪这种写法）
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // ============================================================
 // 类型定义
@@ -49,96 +43,108 @@ export interface TrackResult {
 }
 
 // ============================================================
-// 模块级缓存 —— 冷启动只读一次 CSV，后续热请求直接复用
-// 未来切换数据源时只需替换 loadFromCSV → loadFromSupabase
+// 模块级缓存
 // ============================================================
 let cachedRecords: ShipRecord[] | null = null;
-let loadPromise: Promise<ShipRecord[]> | null = null;
 
 const CSV_FILENAME =
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
 
-function resolveCsvPath(): string {
-  // CSV 在 api/ 目录下，data.ts 在 api/_lib/，往上跳一层就是 CSV 所在位置
-  // Vercel 的 @vercel/nft 捆包器能静态分析 path.resolve(__dirname, '..', ...) 这种模式
-  const primaryPath = path.resolve(__dirname, '..', CSV_FILENAME);
-  if (fs.existsSync(primaryPath)) return primaryPath;
+function findCsvPath(): string {
+  // 按优先级尝试多个可能路径
+  const candidates = [
+    // Vercel: CSV 在 api/ 目录下，CWD = /var/task
+    path.join(process.cwd(), 'api', CSV_FILENAME),
+    // 本地开发: CSV 在项目根目录下
+    path.join(process.cwd(), CSV_FILENAME),
+    // Vercel 备选
+    path.join('/var/task', 'api', CSV_FILENAME),
+    path.join('/var/task', CSV_FILENAME),
+  ];
 
-  // 兜底：本地运行时尝试项目根目录
-  const fallback = path.resolve(__dirname, '..', '..', CSV_FILENAME);
-  if (fs.existsSync(fallback)) return fallback;
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      console.log('[Data] Found CSV at:', p);
+      return p;
+    }
+  }
 
-  console.error('[Data] CSV not found. Tried:', primaryPath, fallback);
-  throw new Error(`CSV file not found at ${primaryPath}`);
+  console.error('[Data] CSV not found. CWD:', process.cwd());
+  console.error('[Data] Tried:', candidates);
+  throw new Error(
+    `CSV file not found. CWD=${process.cwd()}. Tried: ${candidates.join(', ')}`,
+  );
 }
 
-function loadFromCSV(): Promise<ShipRecord[]> {
-  return new Promise((resolve, reject) => {
-    const records: ShipRecord[] = [];
-    const csvPath = resolveCsvPath();
+function parseCSV(): ShipRecord[] {
+  const csvPath = findCsvPath();
+  const raw = fs.readFileSync(csvPath, 'utf-8');
+  const lines = raw.trim().split(/\r?\n/);
 
-    console.log('[Data] CSV path:', csvPath);
-    console.log('[Data] CWD:', process.cwd());
+  if (lines.length === 0) throw new Error('CSV is empty');
 
-    if (!fs.existsSync(csvPath)) {
-      const err = new Error(
-        `CSV not found: ${csvPath}. CWD=${process.cwd()}, ENV=${process.env.VERCEL_ENV || 'local'}`,
-      );
-      console.error(err.message);
-      return reject(err);
-    }
+  // 解析表头找到列索引
+  const headers = lines[0].split(',').map((h) => h.trim());
+  const colIdx = {
+    mmsi: headers.indexOf('MMSI'),
+    lat: headers.indexOf('Latitude'),
+    lng: headers.indexOf('Longitude'),
+    sog: headers.indexOf('Speed Over Ground (SOG)'),
+    cog: headers.indexOf('Course Over Ground (COG)'),
+    heading: headers.indexOf('True Heading'),
+    status: headers.indexOf('Navigational Status'),
+    tsUnix: headers.indexOf('Timestamp (Unix)'),
+    tsIso: headers.indexOf('Timestamp (ISO)'),
+  };
 
-    fs.createReadStream(csvPath)
-      .pipe(csv())
-      .on('data', (row: Record<string, string>) => {
-        const ts = parseInt(row['Timestamp (Unix)'], 10);
-        if (!isNaN(ts)) {
-          records.push({
-            mmsi: parseInt(row['MMSI'], 10) || 0,
-            lat: parseFloat(row['Latitude']) || 0,
-            lng: parseFloat(row['Longitude']) || 0,
-            sog: row['Speed Over Ground (SOG)']
-              ? parseFloat(row['Speed Over Ground (SOG)'])
-              : null,
-            cog: row['Course Over Ground (COG)']
-              ? parseFloat(row['Course Over Ground (COG)'])
-              : null,
-            heading: row['True Heading']
-              ? parseFloat(row['True Heading'])
-              : null,
-            status: row['Navigational Status']
-              ? parseInt(row['Navigational Status'], 10)
-              : null,
-            timestamp: ts,
-            iso: row['Timestamp (ISO)'] || '',
-          });
-        }
-      })
-      .on('end', () => {
-        records.sort((a, b) => a.timestamp - b.timestamp);
-        cachedRecords = records;
-        console.log(
-          `[Data] Loaded ${records.length} records, ` +
-            `${new Set(records.map((r) => r.mmsi)).size} ships`,
-        );
-        resolve(records);
-      })
-      .on('error', reject);
-  });
+  const records: ShipRecord[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+
+    const cols = line.split(',');
+    const ts = parseInt(cols[colIdx.tsUnix], 10);
+    if (isNaN(ts)) continue;
+
+    records.push({
+      mmsi: parseInt(cols[colIdx.mmsi], 10) || 0,
+      lat: parseFloat(cols[colIdx.lat]) || 0,
+      lng: parseFloat(cols[colIdx.lng]) || 0,
+      sog: cols[colIdx.sog] ? parseFloat(cols[colIdx.sog]) : null,
+      cog: cols[colIdx.cog] ? parseFloat(cols[colIdx.cog]) : null,
+      heading: cols[colIdx.heading]
+        ? parseFloat(cols[colIdx.heading])
+        : null,
+      status: cols[colIdx.status]
+        ? parseInt(cols[colIdx.status], 10)
+        : null,
+      timestamp: ts,
+      iso: cols[colIdx.tsIso] || '',
+    });
+  }
+
+  records.sort((a, b) => a.timestamp - b.timestamp);
+  return records;
 }
 
 // ---- 公共 API ----
 
-export async function getAllRecords(): Promise<ShipRecord[]> {
-  if (cachedRecords) return cachedRecords;
-  if (!loadPromise) {
-    loadPromise = loadFromCSV();
+export function getAllRecords(): ShipRecord[] {
+  if (!cachedRecords) {
+    console.log('[Data] Loading CSV...');
+    const start = Date.now();
+    cachedRecords = parseCSV();
+    const ships = new Set(cachedRecords.map((r) => r.mmsi)).size;
+    console.log(
+      `[Data] Loaded ${cachedRecords.length} records, ${ships} ships in ${Date.now() - start}ms`,
+    );
   }
-  return loadPromise;
+  return cachedRecords;
 }
 
-export async function getShipsLatest(): Promise<ShipLatest[]> {
-  const records = await getAllRecords();
+export function getShipsLatest(): ShipLatest[] {
+  const records = getAllRecords();
   const latestMap = new Map<number, ShipRecord>();
 
   for (const r of records) {
@@ -159,8 +165,8 @@ export async function getShipsLatest(): Promise<ShipLatest[]> {
   }));
 }
 
-export async function queryTracks(q: TrackQuery): Promise<TrackResult> {
-  const records = await getAllRecords();
+export function queryTracks(q: TrackQuery): TrackResult {
+  const records = getAllRecords();
   let filtered = records;
 
   // MMSI 筛选
@@ -208,4 +214,3 @@ export async function queryTracks(q: TrackQuery): Promise<TrackResult> {
 
   return { total, page: q.page, page_size: q.page_size, data };
 }
-
