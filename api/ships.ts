@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getShipsLatest } from './_lib/data';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('[ships] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
