@@ -35,7 +35,7 @@ Write-Host ""
 # ---------- Step 2: 可选构建测试 ----------
 if (-not $SkipBuild) {
     Write-Host "[2/5] 构建测试 (vite build)..." -ForegroundColor Yellow
-    Push-Location $PSScriptRoot
+    Push-Location "$PSScriptRoot\navi-navy"
     try {
         npx vite build 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
