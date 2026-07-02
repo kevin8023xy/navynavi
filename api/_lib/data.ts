@@ -1,8 +1,5 @@
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-const records = require('./records.json') as any[];
-
+import fs from 'fs';
+import path from 'path';
 
 // ============================================================
 // 类型定义
@@ -46,19 +43,112 @@ export interface TrackResult {
 }
 
 // ============================================================
-// 模块级缓存：JSON 在模块加载时由 Node 解析一次，后续直接复用
+// 运行时数据源：优先读取 CSV（生产环境），本地构建后的 JSON 作为可选缓存
 // ============================================================
-const cachedRecords: ShipRecord[] = (records as any[]).map((r) => ({
-  mmsi: r.mmsi,
-  lat: r.lat,
-  lng: r.lng,
-  sog: r.sog,
-  cog: r.cog,
-  heading: r.heading,
-  status: r.status,
-  timestamp: r.timestamp,
-  iso: new Date(r.timestamp * 1000).toISOString(),
-}));
+const CSV_FILENAME =
+  'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
+
+function findRecordsJson(): string | null {
+  const candidates = [
+    path.join(process.cwd(), 'api', '_lib', 'records.json'),
+    path.join('/var/task', 'api', '_lib', 'records.json'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+function findCsv(): string | null {
+  const candidates = [
+    path.join(process.cwd(), CSV_FILENAME),
+    path.join('/var/task', CSV_FILENAME),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+function parseCsv(csvPath: string): ShipRecord[] {
+  const raw = fs.readFileSync(csvPath, 'utf-8');
+  const lines = raw.trim().split(/\r?\n/);
+  if (lines.length === 0) throw new Error('CSV is empty');
+
+  const headers = lines[0].split(',').map((h) => h.trim());
+  const colIdx = {
+    mmsi: headers.indexOf('MMSI'),
+    lat: headers.indexOf('Latitude'),
+    lng: headers.indexOf('Longitude'),
+    sog: headers.indexOf('Speed Over Ground (SOG)'),
+    cog: headers.indexOf('Course Over Ground (COG)'),
+    heading: headers.indexOf('True Heading'),
+    status: headers.indexOf('Navigational Status'),
+    tsUnix: headers.indexOf('Timestamp (Unix)'),
+  };
+
+  const records: ShipRecord[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+
+    const cols = line.split(',');
+    const ts = parseInt(cols[colIdx.tsUnix], 10);
+    if (isNaN(ts)) continue;
+
+    records.push({
+      mmsi: parseInt(cols[colIdx.mmsi], 10) || 0,
+      lat: parseFloat(cols[colIdx.lat]) || 0,
+      lng: parseFloat(cols[colIdx.lng]) || 0,
+      sog: cols[colIdx.sog] ? parseFloat(cols[colIdx.sog]) : null,
+      cog: cols[colIdx.cog] ? parseFloat(cols[colIdx.cog]) : null,
+      heading: cols[colIdx.heading] ? parseFloat(cols[colIdx.heading]) : null,
+      status: cols[colIdx.status] ? parseInt(cols[colIdx.status], 10) : null,
+      timestamp: ts,
+      iso: new Date(ts * 1000).toISOString(),
+    });
+  }
+
+  records.sort((a, b) => a.timestamp - b.timestamp);
+  return records;
+}
+
+function loadRecords(): ShipRecord[] {
+  const jsonPath = findRecordsJson();
+  if (jsonPath) {
+    try {
+      const raw = fs.readFileSync(jsonPath, 'utf-8');
+      const records = JSON.parse(raw) as any[];
+      return records.map((r) => ({
+        mmsi: r.mmsi,
+        lat: r.lat,
+        lng: r.lng,
+        sog: r.sog,
+        cog: r.cog,
+        heading: r.heading,
+        status: r.status,
+        timestamp: r.timestamp,
+        iso: new Date(r.timestamp * 1000).toISOString(),
+      }));
+    } catch {
+      // fallback to CSV
+    }
+  }
+
+  const csvPath = findCsv();
+  if (!csvPath) {
+    throw new Error(
+      `Cannot find data source: neither records.json nor ${CSV_FILENAME}`,
+    );
+  }
+  return parseCsv(csvPath);
+}
+
+// ============================================================
+// 模块级缓存：数据在模块加载时解析一次，后续直接复用
+// ============================================================
+const cachedRecords: ShipRecord[] = loadRecords();
 
 // ---- 公共 API ----
 
