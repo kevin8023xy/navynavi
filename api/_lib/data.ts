@@ -50,16 +50,7 @@ const CSV_FILENAME =
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
 const SMALL_CSV_FILENAME = 'data_small.csv';
 
-export interface DataLoadError {
-  error: true;
-  message: string;
-  stack?: string;
-  checkedPaths: string[];
-  cwd: string;
-  nodeVersion: string;
-}
-
-let cachedRecords: ShipRecord[] | DataLoadError | null = null;
+let cachedRecords: ShipRecord[] | null = null;
 
 function findFile(filenames: string[]): string | null {
   const dirs = [process.cwd(), '/var/task', path.join('/var/task', 'api')];
@@ -75,11 +66,11 @@ function findFile(filenames: string[]): string | null {
 function parseCsv(csvPath: string): ShipRecord[] {
   console.log('[data] reading CSV:', csvPath);
   const raw = fs.readFileSync(csvPath, 'utf-8');
-  console.log('[data] CSV size:', raw.length);
+  console.log('[data] CSV raw size:', raw.length);
 
   const lines = raw.trim().split(/\r?\n/);
   if (lines.length === 0) throw new Error('CSV is empty');
-  console.log('[data] lines:', lines.length);
+  console.log('[data] CSV lines:', lines.length);
 
   const headers = lines[0].split(',').map((h) => h.trim());
   const colIdx = {
@@ -123,14 +114,13 @@ function parseCsv(csvPath: string): ShipRecord[] {
 
 function loadRecords(): ShipRecord[] {
   if (cachedRecords !== null) {
-    if ('error' in cachedRecords) throw new Error(cachedRecords.message);
     return cachedRecords;
   }
 
-  try {
-    const useSmall = process.env.USE_SMALL_DATA === '1';
-    const checkedPaths: string[] = [];
+  const useSmall = process.env.USE_SMALL_DATA === '1';
+  const checkedPaths: string[] = [];
 
+  try {
     // 1. 本地构建缓存
     if (!useSmall) {
       const jsonCandidates = [
@@ -163,68 +153,48 @@ function loadRecords(): ShipRecord[] {
     // 2. 小数据集（用于测试）
     if (useSmall) {
       const smallPath = findFile([SMALL_CSV_FILENAME]);
-      checkedPaths.push('(small csv search)');
       if (smallPath) {
+        console.log('[data] loading small CSV:', smallPath);
         cachedRecords = parseCsv(smallPath);
         return cachedRecords;
       }
+      checkedPaths.push('(small csv not found)');
     }
 
     // 3. 完整 CSV
     const csvPath = findFile([CSV_FILENAME]);
-    checkedPaths.push('(full csv search)');
     if (csvPath) {
+      console.log('[data] loading full CSV:', csvPath);
       cachedRecords = parseCsv(csvPath);
       return cachedRecords;
     }
+    checkedPaths.push('(full csv not found)');
 
-    // 找不到数据源
-    const checkedPaths2 = [
-      path.join(process.cwd(), 'api', '_lib', 'records.json'),
-      path.join('/var/task', 'api', '_lib', 'records.json'),
-      path.join(process.cwd(), CSV_FILENAME),
-      path.join('/var/task', CSV_FILENAME),
-      path.join('/var/task', 'api', CSV_FILENAME),
-    ];
     throw new Error(
-      `Cannot find data source. Checked: ${checkedPaths2.join(', ')}`,
+      `Cannot find data source. Checked: ${checkedPaths.join(', ')}`,
     );
   } catch (err: any) {
-    console.error('[data] load failed:', err?.message, err?.stack);
-    cachedRecords = {
-      error: true,
+    const detail = {
       message: err?.message || String(err),
       stack: err?.stack,
-      checkedPaths: [
-        path.join(process.cwd(), 'api', '_lib', 'records.json'),
-        path.join('/var/task', 'api', '_lib', 'records.json'),
-        path.join(process.cwd(), CSV_FILENAME),
-        path.join('/var/task', CSV_FILENAME),
-        path.join('/var/task', 'api', CSV_FILENAME),
-      ],
+      checkedPaths,
       cwd: process.cwd(),
       nodeVersion: process.version,
+      useSmall,
     };
-    throw new Error(cachedRecords.message);
+    console.error('[data] load failed:', JSON.stringify(detail));
+    throw new Error(detail.message);
   }
-}
-
-function ensureRecords(): ShipRecord[] {
-  const records = loadRecords();
-  if ('error' in records) {
-    throw new Error(records.message);
-  }
-  return records;
 }
 
 // ---- 公共 API ----
 
 export function getAllRecords(): ShipRecord[] {
-  return ensureRecords();
+  return loadRecords();
 }
 
 export function getShipsLatest(): ShipLatest[] {
-  const records = ensureRecords();
+  const records = loadRecords();
   const latestMap = new Map<number, ShipRecord>();
 
   for (const r of records) {
@@ -246,7 +216,7 @@ export function getShipsLatest(): ShipLatest[] {
 }
 
 export function queryTracks(q: TrackQuery): TrackResult {
-  let filtered = ensureRecords();
+  let filtered = loadRecords();
 
   // MMSI 筛选
   if (q.mmsi) {

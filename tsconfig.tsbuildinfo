@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/aisplayback.tsx","./src/pages/console.tsx","./src/pages/home.tsx","./api/debug.ts","./api/health.ts","./api/ping.ts","./api/ships.ts","./api/tracks.ts","./api/_lib/data.ts"],"errors":true,"version":"6.0.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/aisplayback.tsx","./src/pages/console.tsx","./src/pages/home.tsx","./api/debug.ts","./api/health.ts","./api/ping.ts","./api/ships.ts","./api/tracks.ts","./api/_lib/data.ts"],"version":"6.0.3"}
