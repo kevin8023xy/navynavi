@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 
 const PLAYBACK_SPEEDS = ['0.5x', '1x', '2x', '5x', '10x', '50x', '100x']
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
 interface AisPlaybackProps {
   onTracksChange: (tracks: any[]) => void
