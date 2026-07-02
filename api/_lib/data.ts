@@ -1,10 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-// @vercel/nft 可追踪: path.resolve(__dirname, '..', CONSTANT_STRING)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // ============================================================
 // 类型定义
@@ -55,19 +50,33 @@ let cachedRecords: ShipRecord[] | null = null;
 const CSV_FILENAME =
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
 
-// @vercel/nft 静态分析能追踪这种模式: path.resolve(__dirname, '..', literal)
-const CSV_PATH = path.resolve(__dirname, '..', CSV_FILENAME);
+function findCsvPath(): string {
+  // Vercel 打包后文件会放在 /var/task/ 或 /var/task/api/ 下，
+  // 本地则在项目根目录或 api/ 目录下。多路径尝试确保都能找到。
+  const candidates = [
+    path.join(process.cwd(), CSV_FILENAME),
+    path.join(process.cwd(), 'api', CSV_FILENAME),
+    path.join('/var/task', CSV_FILENAME),
+    path.join('/var/task', 'api', CSV_FILENAME),
+  ];
 
-function parseCSV(): ShipRecord[] {
-  console.log('[Data] Reading CSV from:', CSV_PATH);
-
-  if (!fs.existsSync(CSV_PATH)) {
-    throw new Error(
-      `CSV not found at ${CSV_PATH}. CWD=${process.cwd()}`,
-    );
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      console.log('[Data] Found CSV at:', p);
+      return p;
+    }
   }
 
-  const raw = fs.readFileSync(CSV_PATH, 'utf-8');
+  throw new Error(
+    `CSV not found. CWD=${process.cwd()}. Tried: ${candidates.join(', ')}`,
+  );
+}
+
+function parseCSV(): ShipRecord[] {
+  const csvPath = findCsvPath();
+  console.log('[Data] Reading CSV from:', csvPath);
+
+  const raw = fs.readFileSync(csvPath, 'utf-8');
   const lines = raw.trim().split(/\r?\n/);
 
   if (lines.length === 0) throw new Error('CSV is empty');
