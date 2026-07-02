@@ -5,7 +5,7 @@ import path from 'path';
 const CSV_FILENAME =
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default function handler(_req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const candidates = [
