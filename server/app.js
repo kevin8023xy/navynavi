@@ -75,7 +75,7 @@ app.get('/api/tracks', (req, res) => {
   const start_time = req.query.start_time ? parseInt(req.query.start_time, 10) : null;
   const end_time = req.query.end_time ? parseInt(req.query.end_time, 10) : null;
   const page = Math.max(1, parseInt(req.query.page || '1', 10));
-  const page_size = Math.min(Math.max(1, parseInt(req.query.page_size || '500', 10)), 500000);
+  const page_size = Math.min(Math.max(1, parseInt(req.query.page_size || '500', 10)), 10000);
   const bbox = req.query.bbox || '';
 
   let filtered = allRecords;

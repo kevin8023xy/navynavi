@@ -128,15 +128,34 @@ export default function AisPlayback({
     }, 80)
 
     try {
-      const res = await fetch(
-        `${API_BASE}/tracks?start_time=${s}&end_time=${e}&page=1&page_size=500000`
-      )
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
+      const PAGE_SIZE = 10000
+      let allData: any[] = []
+      let page = 1
+      let total = Infinity
+
+      while (allData.length < total) {
+        const res = await fetch(
+          `${API_BASE}/tracks?start_time=${s}&end_time=${e}&page=${page}&page_size=${PAGE_SIZE}`
+        )
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+
+        if (!data.data || data.data.length === 0) break
+
+        allData = allData.concat(data.data)
+        total = data.total
+        page++
+
+        // 根据实际加载进度更新进度条
+        const progress = total > 0 ? Math.min(90, (allData.length / total) * 90) + 5 : 5
+        setLoadProgress(progress)
+
+        if (page > 1000) break
+      }
 
       clearInterval(progressInterval)
       setLoadProgress(100)
-      setAllTracks(data.data || [])
+      setAllTracks(allData)
       setPlaybackTime(s)
     } catch (err: any) {
       clearInterval(progressInterval)
