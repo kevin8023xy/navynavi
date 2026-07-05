@@ -70,7 +70,32 @@ function loadRecords() {
   const useSmall = process.env.USE_SMALL_DATA === '1';
 
   try {
-    // 1. 优先使用内嵌数据（直接写在代码里，不依赖文件系统，也不受 USE_SMALL_DATA 影响）
+    // 1. 优先加载外部打包的数据模块（支持一万条以上，会被 Vercel 自动打包）
+    try {
+      const externalData = require('./data_10k');
+      if (externalData && externalData.length > 0) {
+        console.log('[data] using external data_10k:', externalData.length);
+        cachedRecords = externalData.map((r) => ({
+          mmsi: r.mmsi,
+          lat: r.lat,
+          lng: r.lng,
+          sog: r.sog,
+          cog: r.cog,
+          heading: r.heading,
+          status: r.status,
+          timestamp: r.timestamp,
+          iso: new Date(r.timestamp * 1000).toISOString(),
+        }));
+        return cachedRecords;
+      }
+    } catch (err) {
+      if (err.code !== 'MODULE_NOT_FOUND') {
+        console.error('[data] failed to load data_10k:', err.message);
+      }
+      // data_10k.js 不存在时继续走后续 fallback
+    }
+
+    // 2. 使用内嵌数据（直接写在代码里，不依赖文件系统，也不受 USE_SMALL_DATA 影响）
     if (EMBEDDED_RECORDS && EMBEDDED_RECORDS.length > 0) {
       console.log('[data] using embedded records:', EMBEDDED_RECORDS.length);
       cachedRecords = EMBEDDED_RECORDS.map((r) => ({
