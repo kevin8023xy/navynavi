@@ -4,7 +4,7 @@
   "devCommand": "npm run dev",
   "framework": "vite",
   "functions": {
-    "api/*.js": {
+    "api/*.cjs": {
       "maxDuration": 60,
       "memory": 1024
     }
