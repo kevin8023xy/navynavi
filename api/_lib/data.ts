@@ -133,7 +133,11 @@ function loadRecords(): ShipRecord[] {
         checkedPaths.push(p);
         if (fs.existsSync(p)) {
           console.log('[data] loading json:', p);
-          const raw = fs.readFileSync(p, 'utf-8');
+          let raw = fs.readFileSync(p, 'utf-8');
+          // 去除 UTF-8 BOM (EF BB BF)，防止 JSON.parse 失败
+          if (raw.charCodeAt(0) === 0xfeff) {
+            raw = raw.slice(1);
+          }
           const records = JSON.parse(raw) as any[];
           cachedRecords = records.map((r) => ({
             mmsi: r.mmsi,
