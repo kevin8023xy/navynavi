@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { queryTracks } from './_lib/data';
+import { queryTracks } from './lib/data';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[tracks] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });
@@ -34,7 +34,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
         parseInt((typeof page === 'string' ? page : '1'), 10) || 1,
       ),
       page_size: Math.min(
-        10000,
+        100,
         Math.max(
           1,
           parseInt((typeof page_size === 'string' ? page_size : '500'), 10) ||

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAllRecords } from './_lib/data';
+import { getAllRecords } from './lib/data';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[health] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });

@@ -128,7 +128,7 @@ export default function AisPlayback({
     }, 80)
 
     try {
-      const PAGE_SIZE = 10000
+      const PAGE_SIZE = 100
       let allData: any[] = []
       let page = 1
       let total = Infinity

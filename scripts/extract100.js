@@ -6,8 +6,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
-const SOURCE_PATH = path.resolve(projectRoot, 'api', '_lib', 'records.json');
-const TARGET_PATH = path.resolve(projectRoot, 'api', '_lib', 'record1.json');
+const SOURCE_PATH = path.resolve(projectRoot, 'api', 'lib', 'records.json');
+const TARGET_PATH = path.resolve(projectRoot, 'api', 'lib', 'record1.json');
 const COUNT = 100;
 
 function main() {

@@ -124,10 +124,10 @@ function loadRecords(): ShipRecord[] {
     // 1. 本地构建缓存（默认使用 100 条小数据集 record1.json）
     if (!useSmall) {
       const jsonCandidates = [
-        path.join(process.cwd(), 'api', '_lib', 'record1.json'),
-        path.join('/var/task', 'api', '_lib', 'record1.json'),
-        path.join(process.cwd(), 'api', '_lib', 'records.json'),
-        path.join('/var/task', 'api', '_lib', 'records.json'),
+        path.join(process.cwd(), 'api', 'lib', 'record1.json'),
+        path.join('/var/task', 'api', 'lib', 'record1.json'),
+        path.join(process.cwd(), 'api', 'lib', 'records.json'),
+        path.join('/var/task', 'api', 'lib', 'records.json'),
       ];
       for (const p of jsonCandidates) {
         checkedPaths.push(p);

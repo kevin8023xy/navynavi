@@ -10,7 +10,7 @@ const CSV_PATH = path.resolve(
   projectRoot,
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv',
 );
-const JSON_PATH = path.resolve(projectRoot, 'api', '_lib', 'record1.json');
+const JSON_PATH = path.resolve(projectRoot, 'api', 'lib', 'record1.json');
 
 function getLimit() {
   const env = process.env.RECORD_LIMIT;
