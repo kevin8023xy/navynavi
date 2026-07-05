@@ -121,16 +121,18 @@ function loadRecords(): ShipRecord[] {
   const checkedPaths: string[] = [];
 
   try {
-    // 1. 本地构建缓存
+    // 1. 本地构建缓存（默认使用 100 条小数据集 record1.json）
     if (!useSmall) {
       const jsonCandidates = [
+        path.join(process.cwd(), 'api', '_lib', 'record1.json'),
+        path.join('/var/task', 'api', '_lib', 'record1.json'),
         path.join(process.cwd(), 'api', '_lib', 'records.json'),
         path.join('/var/task', 'api', '_lib', 'records.json'),
       ];
       for (const p of jsonCandidates) {
         checkedPaths.push(p);
         if (fs.existsSync(p)) {
-          console.log('[data] loading records.json:', p);
+          console.log('[data] loading json:', p);
           const raw = fs.readFileSync(p, 'utf-8');
           const records = JSON.parse(raw) as any[];
           cachedRecords = records.map((r) => ({
@@ -144,7 +146,7 @@ function loadRecords(): ShipRecord[] {
             timestamp: r.timestamp,
             iso: new Date(r.timestamp * 1000).toISOString(),
           }));
-          console.log('[data] loaded from records.json:', cachedRecords.length);
+          console.log('[data] loaded from json:', cachedRecords.length);
           return cachedRecords;
         }
       }

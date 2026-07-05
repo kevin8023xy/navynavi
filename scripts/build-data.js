@@ -10,10 +10,20 @@ const CSV_PATH = path.resolve(
   projectRoot,
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv',
 );
-const JSON_PATH = path.resolve(projectRoot, 'api', '_lib', 'records.json');
+const JSON_PATH = path.resolve(projectRoot, 'api', '_lib', 'record1.json');
+
+function getLimit() {
+  const env = process.env.RECORD_LIMIT;
+  if (env === 'all') return Infinity;
+  if (!env) return 100;
+  const n = parseInt(env, 10);
+  return isNaN(n) ? 100 : n;
+}
 
 function main() {
+  const limit = getLimit();
   console.log('[build-data] Reading CSV from:', CSV_PATH);
+  console.log(`[build-data] RECORD_LIMIT=${limit === Infinity ? 'all' : limit}`);
   const raw = fs.readFileSync(CSV_PATH, 'utf-8');
   const lines = raw.trim().split(/\r?\n/);
 
@@ -33,7 +43,7 @@ function main() {
 
   const records = [];
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = 1; i < lines.length && records.length < limit; i++) {
     const line = lines[i];
     if (!line.trim()) continue;
 
