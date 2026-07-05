@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+'use strict';
 
-export default function handler(_req: VercelRequest, res: VercelResponse) {
+module.exports = function handler(_req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.json({
     ok: true,
@@ -8,4 +8,4 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
     env: process.env.VERCEL_ENV || 'local',
     node_version: process.version,
   });
-}
+};

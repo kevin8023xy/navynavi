@@ -1,58 +1,15 @@
-import fs from 'fs';
-import path from 'path';
+'use strict';
 
-// ============================================================
-// 类型定义
-// ============================================================
-export interface ShipRecord {
-  mmsi: number;
-  lat: number;
-  lng: number;
-  sog: number | null;
-  cog: number | null;
-  heading: number | null;
-  status: number | null;
-  timestamp: number;
-  iso: string;
-}
+const fs = require('fs');
+const path = require('path');
 
-export interface ShipLatest {
-  mmsi: number;
-  lat: number;
-  lng: number;
-  sog: number | null;
-  cog: number | null;
-  lastTimestamp: number;
-  lastIso: string;
-}
-
-export interface TrackQuery {
-  mmsi?: string;
-  start_time?: number;
-  end_time?: number;
-  bbox?: string;
-  page: number;
-  page_size: number;
-}
-
-export interface TrackResult {
-  total: number;
-  page: number;
-  page_size: number;
-  data: ShipRecord[];
-}
-
-// ============================================================
-// 数据加载（懒加载）：模块加载时不读文件，第一次调用时再加载
-// 这样 handler 里的 console.log 能先执行，错误也能被捕获并返回
-// ============================================================
 const CSV_FILENAME =
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
 const SMALL_CSV_FILENAME = 'data_small.csv';
 
-let cachedRecords: ShipRecord[] | null = null;
+let cachedRecords = null;
 
-function findFile(filenames: string[]): string | null {
+function findFile(filenames) {
   const dirs = [process.cwd(), '/var/task', path.join('/var/task', 'api')];
   for (const dir of dirs) {
     for (const filename of filenames) {
@@ -63,14 +20,11 @@ function findFile(filenames: string[]): string | null {
   return null;
 }
 
-function parseCsv(csvPath: string): ShipRecord[] {
+function parseCsv(csvPath) {
   console.log('[data] reading CSV:', csvPath);
   const raw = fs.readFileSync(csvPath, 'utf-8');
-  console.log('[data] CSV raw size:', raw.length);
-
   const lines = raw.trim().split(/\r?\n/);
   if (lines.length === 0) throw new Error('CSV is empty');
-  console.log('[data] CSV lines:', lines.length);
 
   const headers = lines[0].split(',').map((h) => h.trim());
   const colIdx = {
@@ -84,16 +38,13 @@ function parseCsv(csvPath: string): ShipRecord[] {
     tsUnix: headers.indexOf('Timestamp (Unix)'),
   };
 
-  const records: ShipRecord[] = [];
-
+  const records = [];
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line.trim()) continue;
-
     const cols = line.split(',');
     const ts = parseInt(cols[colIdx.tsUnix], 10);
     if (isNaN(ts)) continue;
-
     records.push({
       mmsi: parseInt(cols[colIdx.mmsi], 10) || 0,
       lat: parseFloat(cols[colIdx.lat]) || 0,
@@ -106,22 +57,17 @@ function parseCsv(csvPath: string): ShipRecord[] {
       iso: new Date(ts * 1000).toISOString(),
     });
   }
-
   records.sort((a, b) => a.timestamp - b.timestamp);
-  console.log('[data] parsed records:', records.length);
   return records;
 }
 
-function loadRecords(): ShipRecord[] {
-  if (cachedRecords !== null) {
-    return cachedRecords;
-  }
+function loadRecords() {
+  if (cachedRecords !== null) return cachedRecords;
 
   const useSmall = process.env.USE_SMALL_DATA === '1';
-  const checkedPaths: string[] = [];
+  const checkedPaths = [];
 
   try {
-    // 1. 本地构建缓存（默认使用 100 条小数据集 record1.json）
     if (!useSmall) {
       const jsonCandidates = [
         path.join(process.cwd(), 'api', 'lib', 'record1.json'),
@@ -134,11 +80,8 @@ function loadRecords(): ShipRecord[] {
         if (fs.existsSync(p)) {
           console.log('[data] loading json:', p);
           let raw = fs.readFileSync(p, 'utf-8');
-          // 去除 UTF-8 BOM (EF BB BF)，防止 JSON.parse 失败
-          if (raw.charCodeAt(0) === 0xfeff) {
-            raw = raw.slice(1);
-          }
-          const records = JSON.parse(raw) as any[];
+          if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
+          const records = JSON.parse(raw);
           cachedRecords = records.map((r) => ({
             mmsi: r.mmsi,
             lat: r.lat,
@@ -156,60 +99,40 @@ function loadRecords(): ShipRecord[] {
       }
     }
 
-    // 2. 小数据集（用于测试）
     if (useSmall) {
       const smallPath = findFile([SMALL_CSV_FILENAME]);
       if (smallPath) {
-        console.log('[data] loading small CSV:', smallPath);
         cachedRecords = parseCsv(smallPath);
         return cachedRecords;
       }
-      checkedPaths.push('(small csv not found)');
     }
 
-    // 3. 完整 CSV
     const csvPath = findFile([CSV_FILENAME]);
     if (csvPath) {
-      console.log('[data] loading full CSV:', csvPath);
       cachedRecords = parseCsv(csvPath);
       return cachedRecords;
     }
-    checkedPaths.push('(full csv not found)');
 
-    throw new Error(
-      `Cannot find data source. Checked: ${checkedPaths.join(', ')}`,
-    );
-  } catch (err: any) {
-    const detail = {
-      message: err?.message || String(err),
-      stack: err?.stack,
-      checkedPaths,
-      cwd: process.cwd(),
-      nodeVersion: process.version,
-      useSmall,
-    };
-    console.error('[data] load failed:', JSON.stringify(detail));
-    throw new Error(detail.message);
+    throw new Error('Cannot find data source. Checked: ' + checkedPaths.join(', '));
+  } catch (err) {
+    console.error('[data] load failed:', err.message);
+    throw err;
   }
 }
 
-// ---- 公共 API ----
-
-export function getAllRecords(): ShipRecord[] {
+function getAllRecords() {
   return loadRecords();
 }
 
-export function getShipsLatest(): ShipLatest[] {
+function getShipsLatest() {
   const records = loadRecords();
-  const latestMap = new Map<number, ShipRecord>();
-
+  const latestMap = new Map();
   for (const r of records) {
     const existing = latestMap.get(r.mmsi);
     if (!existing || r.timestamp > existing.timestamp) {
       latestMap.set(r.mmsi, r);
     }
   }
-
   return Array.from(latestMap.values()).map((r) => ({
     mmsi: r.mmsi,
     lat: r.lat,
@@ -221,10 +144,9 @@ export function getShipsLatest(): ShipLatest[] {
   }));
 }
 
-export function queryTracks(q: TrackQuery): TrackResult {
+function queryTracks(q) {
   let filtered = loadRecords();
 
-  // MMSI 筛选
   if (q.mmsi) {
     const mmsiList = q.mmsi
       .split(',')
@@ -236,15 +158,13 @@ export function queryTracks(q: TrackQuery): TrackResult {
     }
   }
 
-  // 时间范围筛选
   if (q.start_time !== undefined) {
-    filtered = filtered.filter((r) => r.timestamp >= q.start_time!);
+    filtered = filtered.filter((r) => r.timestamp >= q.start_time);
   }
   if (q.end_time !== undefined) {
-    filtered = filtered.filter((r) => r.timestamp <= q.end_time!);
+    filtered = filtered.filter((r) => r.timestamp <= q.end_time);
   }
 
-  // BBox 空间筛选
   if (q.bbox) {
     const parts = q.bbox
       .split(',')
@@ -253,19 +173,15 @@ export function queryTracks(q: TrackQuery): TrackResult {
     if (parts.length === 4) {
       const [minLat, maxLat, minLng, maxLng] = parts;
       filtered = filtered.filter(
-        (r) =>
-          r.lat >= minLat &&
-          r.lat <= maxLat &&
-          r.lng >= minLng &&
-          r.lng <= maxLng,
+        (r) => r.lat >= minLat && r.lat <= maxLat && r.lng >= minLng && r.lng <= maxLng,
       );
     }
   }
 
-  // 分页
   const total = filtered.length;
   const startIdx = (q.page - 1) * q.page_size;
   const data = filtered.slice(startIdx, startIdx + q.page_size);
-
   return { total, page: q.page, page_size: q.page_size, data };
 }
+
+module.exports = { getAllRecords, getShipsLatest, queryTracks };

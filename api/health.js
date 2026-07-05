@@ -1,7 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAllRecords } from './lib/data';
+'use strict';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+const { getAllRecords } = require('./lib/data');
+
+module.exports = function handler(req, res) {
   console.log('[health] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -22,10 +23,10 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
       total: records.length,
       ships: new Set(records.map((r) => r.mmsi)).size,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[health] Error:', err);
     return res
       .status(500)
-      .json({ error: err?.message || 'Internal server error' });
+      .json({ error: err && err.message ? err.message : 'Internal server error' });
   }
-}
+};

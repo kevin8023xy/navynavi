@@ -1,11 +1,12 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import fs from 'fs';
-import path from 'path';
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
 
 const CSV_FILENAME =
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
 
-export default function handler(_req: VercelRequest, res: VercelResponse) {
+module.exports = function handler(_req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const candidates = [
@@ -21,22 +22,21 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
     size: fs.existsSync(p) ? fs.statSync(p).size : -1,
   }));
 
-  // 尝试列出关键目录
-  const dirs: Record<string, string[]> = {};
+  const dirs = {};
   try {
     dirs.cwd = fs.readdirSync(process.cwd());
-  } catch (e: any) {
-    dirs.cwd = [`error: ${e.message}`];
+  } catch (e) {
+    dirs.cwd = ['error: ' + e.message];
   }
   try {
     dirs.varTask = fs.readdirSync('/var/task');
-  } catch (e: any) {
-    dirs.varTask = [`error: ${e.message}`];
+  } catch (e) {
+    dirs.varTask = ['error: ' + e.message];
   }
   try {
     dirs.varTaskApi = fs.readdirSync('/var/task/api');
-  } catch (e: any) {
-    dirs.varTaskApi = [`error: ${e.message}`];
+  } catch (e) {
+    dirs.varTaskApi = ['error: ' + e.message];
   }
 
   res.json({
@@ -44,7 +44,7 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
     cwd: process.cwd(),
     env: process.env.VERCEL_ENV || 'local',
     node_version: process.version,
-    checks,
-    dirs,
+    checks: checks,
+    dirs: dirs,
   });
-}
+};

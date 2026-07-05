@@ -1,7 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getShipsLatest } from './lib/data';
+'use strict';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+const { getShipsLatest } = require('./lib/data');
+
+module.exports = function handler(req, res) {
   console.log('[ships] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -18,10 +19,10 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const ships = getShipsLatest();
     return res.json(ships);
-  } catch (err: any) {
+  } catch (err) {
     console.error('[ships] Error:', err);
     return res
       .status(500)
-      .json({ error: err?.message || 'Internal server error' });
+      .json({ error: err && err.message ? err.message : 'Internal server error' });
   }
-}
+};

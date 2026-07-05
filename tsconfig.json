@@ -18,5 +18,5 @@
     "noUncheckedSideEffectImports": true,
     "resolveJsonModule": true
   },
-  "include": ["src", "api", "scripts"]
+  "include": ["src", "scripts"]
 }

@@ -1,7 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { queryTracks } from './lib/data';
+'use strict';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+const { queryTracks } = require('./lib/data');
+
+module.exports = function handler(req, res) {
   console.log('[tracks] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -31,23 +32,23 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
       bbox: typeof bbox === 'string' ? bbox : undefined,
       page: Math.max(
         1,
-        parseInt((typeof page === 'string' ? page : '1'), 10) || 1,
+        parseInt(typeof page === 'string' ? page : '1', 10) || 1,
       ),
       page_size: Math.min(
         100,
         Math.max(
           1,
-          parseInt((typeof page_size === 'string' ? page_size : '500'), 10) ||
+          parseInt(typeof page_size === 'string' ? page_size : '500', 10) ||
             500,
         ),
       ),
     });
 
     return res.json(result);
-  } catch (err: any) {
+  } catch (err) {
     console.error('[tracks] Error:', err);
     return res.status(500).json({
-      error: err?.message || 'Internal server error',
+      error: err && err.message ? err.message : 'Internal server error',
     });
   }
-}
+};
