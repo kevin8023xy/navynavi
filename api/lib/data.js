@@ -3,6 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// 直接 require JSON 数据，Vercel 打包时会将其包含在函数包中
+const embeddedRecords = require('./record1.json');
+
 const CSV_FILENAME =
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
 const SMALL_CSV_FILENAME = 'data_small.csv';
@@ -65,18 +68,35 @@ function loadRecords() {
   if (cachedRecords !== null) return cachedRecords;
 
   const useSmall = process.env.USE_SMALL_DATA === '1';
-  const checkedPaths = [];
 
   try {
+    // 1. 优先使用内嵌的 record1.json（已通过 require 打包进函数）
+    if (!useSmall && embeddedRecords && embeddedRecords.length > 0) {
+      console.log('[data] using embedded record1.json:', embeddedRecords.length);
+      cachedRecords = embeddedRecords.map((r) => ({
+        mmsi: r.mmsi,
+        lat: r.lat,
+        lng: r.lng,
+        sog: r.sog,
+        cog: r.cog,
+        heading: r.heading,
+        status: r.status,
+        timestamp: r.timestamp,
+        iso: new Date(r.timestamp * 1000).toISOString(),
+      }));
+      return cachedRecords;
+    }
+
+    // 2. 尝试从文件系统读取（本地开发或备用）
     if (!useSmall) {
       const jsonCandidates = [
         path.join(process.cwd(), 'api', 'lib', 'record1.json'),
         path.join('/var/task', 'api', 'lib', 'record1.json'),
+        path.join(__dirname, 'record1.json'),
         path.join(process.cwd(), 'api', 'lib', 'records.json'),
         path.join('/var/task', 'api', 'lib', 'records.json'),
       ];
       for (const p of jsonCandidates) {
-        checkedPaths.push(p);
         if (fs.existsSync(p)) {
           console.log('[data] loading json:', p);
           let raw = fs.readFileSync(p, 'utf-8');
@@ -99,6 +119,7 @@ function loadRecords() {
       }
     }
 
+    // 3. 小数据集
     if (useSmall) {
       const smallPath = findFile([SMALL_CSV_FILENAME]);
       if (smallPath) {
@@ -107,13 +128,14 @@ function loadRecords() {
       }
     }
 
+    // 4. 完整 CSV
     const csvPath = findFile([CSV_FILENAME]);
     if (csvPath) {
       cachedRecords = parseCsv(csvPath);
       return cachedRecords;
     }
 
-    throw new Error('Cannot find data source. Checked: ' + checkedPaths.join(', '));
+    throw new Error('Cannot find data source.');
   } catch (err) {
     console.error('[data] load failed:', err.message);
     throw err;
