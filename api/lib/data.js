@@ -3,8 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// 直接 require JSON 数据，Vercel 打包时会将其包含在函数包中
-const embeddedRecords = require('./record1.json');
+// 直接 require JS 数据模块，Vercel 打包时会将其包含在函数包中
+const embeddedRecords = require('./records-data');
 
 const CSV_FILENAME =
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv';
