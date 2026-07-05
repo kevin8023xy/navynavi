@@ -67,6 +67,8 @@ function parseCsv(csvPath) {
 function loadRecords() {
   if (cachedRecords !== null) return cachedRecords;
 
+  console.log('[data] EMBEDDED_RECORDS info:', typeof EMBEDDED_RECORDS, EMBEDDED_RECORDS ? EMBEDDED_RECORDS.length : 'null/undefined');
+
   const useSmall = process.env.USE_SMALL_DATA === '1';
 
   try {
