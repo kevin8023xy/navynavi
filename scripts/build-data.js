@@ -15,7 +15,7 @@ const JSON_PATH = path.resolve(projectRoot, 'api', 'lib', 'record1.json');
 function getLimit() {
   const env = process.env.RECORD_LIMIT;
   if (env === 'all') return Infinity;
-  if (!env) return 100;
+  if (!env) return Infinity;
   const n = parseInt(env, 10);
   return isNaN(n) ? 100 : n;
 }

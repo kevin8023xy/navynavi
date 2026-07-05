@@ -1,6 +1,5 @@
 import Papa from 'papaparse';
 import { inflate } from 'pako';
-
 import { openDB } from 'idb';
 
 const DB_NAME = 'ais-db';
@@ -132,13 +131,12 @@ async function loadCsv(progress?: (percent: number) => void): Promise<void> {
         }
       },
       complete: () => resolve(),
-      error: (err) => reject(err),
+      error: (err: any) => reject(err),
     });
   });
 
   progress?.(50);
 
-  // Write records in batches to avoid blocking IndexedDB for too long
   for (let i = 0; i < records.length; i += WRITE_BATCH_SIZE) {
     const batch = records.slice(i, i + WRITE_BATCH_SIZE);
     const tx = db.transaction('records', 'readwrite');
@@ -160,9 +158,7 @@ async function loadCsv(progress?: (percent: number) => void): Promise<void> {
 
 export async function loadAisData(progress?: (percent: number) => void): Promise<void> {
   if (!loadPromise) {
-    loadPromise = loadCsv(progress);
-    loadPromise.catch((err: unknown) => {
-      // Allow retry on failure
+    loadPromise = loadCsv(progress).catch((err: unknown) => {
       loadPromise = null;
       throw err;
     });
