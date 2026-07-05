@@ -67,13 +67,11 @@ function parseCsv(csvPath) {
 function loadRecords() {
   if (cachedRecords !== null) return cachedRecords;
 
-  console.log('[data] EMBEDDED_RECORDS info:', typeof EMBEDDED_RECORDS, EMBEDDED_RECORDS ? EMBEDDED_RECORDS.length : 'null/undefined');
-
   const useSmall = process.env.USE_SMALL_DATA === '1';
 
   try {
-    // 1. 优先使用内嵌数据（直接写在代码里，不依赖文件系统）
-    if (!useSmall && EMBEDDED_RECORDS && EMBEDDED_RECORDS.length > 0) {
+    // 1. 优先使用内嵌数据（直接写在代码里，不依赖文件系统，也不受 USE_SMALL_DATA 影响）
+    if (EMBEDDED_RECORDS && EMBEDDED_RECORDS.length > 0) {
       console.log('[data] using embedded records:', EMBEDDED_RECORDS.length);
       cachedRecords = EMBEDDED_RECORDS.map((r) => ({
         mmsi: r.mmsi,
