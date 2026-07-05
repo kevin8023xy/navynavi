@@ -14,8 +14,9 @@ import {
   ArrowUpFromDot,
 } from 'lucide-react'
 
+import { loadAisData, queryTracks } from '../lib/aisData'
+
 const PLAYBACK_SPEEDS = ['0.5x', '1x', '2x', '5x', '10x', '50x', '100x']
-const API_BASE = '/api'
 
 interface AisPlaybackProps {
   onTracksChange: (tracks: any[]) => void
@@ -120,52 +121,16 @@ export default function AisPlayback({
     const s = Math.floor(new Date(startTime).getTime() / 1000)
     const e = Math.floor(new Date(endTime).getTime() / 1000)
 
-    let progress = 5
-    const progressInterval = setInterval(() => {
-      progress += Math.random() * 8 + 2
-      if (progress > 90) progress = 90
-      setLoadProgress(progress)
-    }, 80)
-
     try {
-      const PAGE_SIZE = 100
-      let allData: any[] = []
-      let page = 1
-      let total = Infinity
-
-      while (allData.length < total) {
-        const res = await fetch(
-          `${API_BASE}/tracks?start_time=${s}&end_time=${e}&page=${page}&page_size=${PAGE_SIZE}`
-        )
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json()
-
-        if (!data.data || data.data.length === 0) break
-
-        allData = allData.concat(data.data)
-        total = data.total
-        page++
-
-        // 根据实际加载进度更新进度条
-        const progress = total > 0 ? Math.min(90, (allData.length / total) * 90) + 5 : 5
-        setLoadProgress(progress)
-
-        if (page > 1000) break
-      }
-
-      clearInterval(progressInterval)
-      setLoadProgress(100)
-      setAllTracks(allData)
+      await loadAisData((progress) => setLoadProgress(progress))
+      const data = await queryTracks(s, e)
+      setAllTracks(data)
       setPlaybackTime(s)
     } catch (err: any) {
-      clearInterval(progressInterval)
-      setLoadProgress(100)
-      onError?.(err?.message || 'Failed to query data')
+      onError?.(err?.message || 'Failed to load AIS data')
     } finally {
-      setTimeout(() => {
-        setIsLoading(false)
-        setLoadProgress(0)
-      }, 1000)
+      setIsLoading(false)
+      setLoadProgress(0)
     }
   }
 

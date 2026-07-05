@@ -48,7 +48,7 @@ export default function Console() {
           sources: {
             'raster-tiles': {
               type: 'raster',
-              tiles: ['https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png'],
+              tiles: ['https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
               tileSize: 256,
               attribution:
                 '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
