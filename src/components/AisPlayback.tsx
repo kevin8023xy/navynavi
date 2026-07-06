@@ -170,7 +170,7 @@ export default function AisPlayback({
   }
 
   return (
-    <div className="absolute bottom-4 left-4 z-999 bg-background w-[calc(100%-2rem)] max-w-[627px] rounded-xl border shadow-lg border-none p-4">
+    <div className="absolute bottom-4 left-4 z-999 bg-background/70 w-[calc(100%-2rem)] max-w-[627px] rounded-xl border shadow-lg border-none p-4">
       <div className="grid grid-cols-2 gap-3 mb-4">
         {/* Start Time */}  
         <div>

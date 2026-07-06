@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Layers } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import compassIcon from '../assets/compass.png'
+import logo from '../assets/logo.webp'
 import AisPlayback from '../components/AisPlayback'
 
 const TOOLS_MENU = [
@@ -28,6 +29,35 @@ export default function Console() {
   const toolsRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [chartVisible, setChartVisible] = useState(true)
+  const [aisPlaybackOpen, setAisPlaybackOpen] = useState(false)
+
+  // NavyNavi app menu state
+  const [navyMenuOpen, setNavyMenuOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
+  const navyMenuRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
+
+  // ── Close NavyNavi dropdown on outside click ──
+  useEffect(() => {
+    if (!navyMenuOpen) return
+    const handleClick = (e: MouseEvent) => {
+      if (navyMenuRef.current && !navyMenuRef.current.contains(e.target as Node)) {
+        setNavyMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [navyMenuOpen])
+
+  // ── Close About modal on Escape ──
+  useEffect(() => {
+    if (!aboutOpen) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAboutOpen(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [aboutOpen])
 
   // Playback data surfaced from AisPlayback module for map rendering
   const [allTracks, setAllTracks] = useState<any[]>([])
@@ -299,14 +329,38 @@ export default function Console() {
       <div className="absolute inset-x-0 top-0 z-20">
         <div
           role="menubar"
-          className="flex h-9 items-center space-x-1 border p-1 shadow-sm rounded-none border-b border-none px-[9px] bg-secondary/95 backdrop-blur-sm"
+          className="flex h-9 items-center space-x-1 border p-1 shadow-sm rounded-none border-b border-none px-[9px] bg-[#d3d5d7]/70 backdrop-blur-sm"
         >
-          <Link
-            to="/"
-            className="flex cursor-default select-none items-center rounded-sm px-3 py-1 text-sm font-medium outline-none focus:bg-accent focus:text-accent-foreground font-heading"
-          >
-            <span className="mb-[2px]">NavyNavi</span>
-          </Link>
+          <div className="relative" ref={navyMenuRef}>
+            <button
+              onClick={() => setNavyMenuOpen(!navyMenuOpen)}
+              className="flex cursor-default select-none items-center rounded-sm px-3 py-1 text-sm font-medium outline-none focus:bg-accent focus:text-accent-foreground font-heading"
+            >
+              <span className="mb-[2px]">NavyNavi</span>
+            </button>
+            {navyMenuOpen && (
+              <div className="absolute left-0 top-full mt-1 z-50 min-w-48 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/70 border-none">
+                <button
+                  onClick={() => {
+                    setNavyMenuOpen(false)
+                    setAboutOpen(true)
+                  }}
+                  className="flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
+                >
+                  About NavyNavi..
+                </button>
+                <button
+                  onClick={() => {
+                    setNavyMenuOpen(false)
+                    navigate('/')
+                  }}
+                  className="flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
+                >
+                  Quit Console
+                </button>
+              </div>
+            )}
+          </div>
           <div className="relative" ref={toolsRef}>
             <button
               onClick={() => setToolsOpen(!toolsOpen)}
@@ -315,7 +369,7 @@ export default function Console() {
               Tools
             </button>
             {toolsOpen && (
-              <div className="absolute left-0 top-full mt-1 z-50 min-w-48 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/85 border-none">
+              <div className="absolute left-0 top-full mt-1 z-50 min-w-48 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/70 border-none">
                 {TOOLS_MENU.map((item, i) =>
                   item.separator ? (
                     <div key={`sep-${i}`} className="-mx-1 my-1 h-px opacity-20 bg-foreground/25" />
@@ -331,7 +385,7 @@ export default function Console() {
                       </button>
                       {aisSubmenuOpen && (
                         <div
-                          className="absolute left-full top-0 ml-1 min-w-32 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/85 border-none"
+                          className="absolute left-full top-0 ml-1 min-w-32 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/70 border-none"
                           onMouseEnter={() => setAisSubmenuOpen(true)}
                           onMouseLeave={() => setAisSubmenuOpen(false)}
                         >
@@ -353,7 +407,10 @@ export default function Console() {
                   ) : (
                     <button
                       key={item.label}
-                      onClick={() => setToolsOpen(false)}
+                      onClick={() => {
+                        setToolsOpen(false)
+                        if (item.label === 'AIS Playback') setAisPlaybackOpen(true)
+                      }}
                       className="flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
                     >
                       {item.label}
@@ -388,12 +445,68 @@ export default function Console() {
       )}
 
       {/* ── AIS Playback Module ── */}
-      <AisPlayback
-        onTracksChange={setAllTracks}
-        onPlaybackTimeChange={setPlaybackTime}
-        onIntervalChange={setIntervalSec}
-        onError={setError}
-      />
+      {aisPlaybackOpen && (
+        <AisPlayback
+          onTracksChange={setAllTracks}
+          onPlaybackTimeChange={setPlaybackTime}
+          onIntervalChange={setIntervalSec}
+          onError={setError}
+        />
+      )}
+
+      {/* ── About NavyNavi Modal ── */}
+      {aboutOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => setAboutOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-lg rounded-xl bg-white/70 p-8 shadow-2xl text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between mb-1">
+              <h2 className="font-heading text-lg font-bold text-slate-800">About</h2>
+              <button
+                onClick={() => setAboutOpen(false)}
+                className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors -mt-1 -mr-1"
+                aria-label="Close"
+              >
+                <svg width="10" height="10" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Logo */}
+            <div className="flex justify-center mb-4">
+              <img src={logo} alt="NavyNavi Logo" className="w-16 h-16 object-contain" />
+            </div>
+
+            {/* Title */}
+            <h2 className="font-heading text-2xl font-bold text-slate-800 mb-1">NavyNavi</h2>
+
+            {/* Version */}
+            <p className="text-sm text-slate-400 mb-5">Version 0.6.2</p>
+
+            {/* Description */}
+            <p className="text-sm text-slate-600 leading-relaxed mb-5 px-2">
+              A modern Vessel Traffic Service (VTS) platform designed for intelligent maritime navigation orchestration.
+            </p>
+
+            {/* Developer */}
+            <div className="mb-5">
+              <p className="text-sm font-semibold text-slate-700">Developed by</p>
+              <p className="text-sm text-slate-500">NavyNavi Team</p>
+            </div>
+
+            {/* Copyright */}
+            <p className="text-xs text-slate-400">
+              Copyright &copy; 2024-2025 NavyNavi Team. All rights reserved.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
