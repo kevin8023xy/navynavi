@@ -104,7 +104,14 @@ async function loadCsv(progress?: (percent: number) => void): Promise<void> {
   progress?.(15);
 
   const compressed = new Uint8Array(await res.arrayBuffer());
-  const decompressed = inflate(compressed, { toText: true });
+
+  let csvText: string;
+  try {
+    csvText = inflate(compressed, { toText: true });
+  } catch {
+    // Browser/server may have already decompressed the .gz file via Content-Encoding
+    csvText = new TextDecoder().decode(compressed);
+  }
 
   progress?.(25);
 
@@ -114,7 +121,7 @@ async function loadCsv(progress?: (percent: number) => void): Promise<void> {
   const estimatedTotal = 210000;
 
   await new Promise<void>((resolve, reject) => {
-    Papa.parse(decompressed, {
+    Papa.parse(csvText, {
       header: true,
       skipEmptyLines: true,
       step: (results) => {

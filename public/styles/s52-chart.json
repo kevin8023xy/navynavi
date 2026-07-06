@@ -15,7 +15,7 @@
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#D6EBF5"
+        "background-color": "#67a3e0"
       }
     },
     {
@@ -25,8 +25,8 @@
       "source-layer": "depth_areas",
       "filter": ["all", ["==", ["geometry-type"], "Polygon"], ["has", "DRVAL1"], [">", ["to-number", ["get", "DRVAL1"], 0], 30]],
       "paint": {
-        "fill-color": "#A6D8F0",
-        "fill-opacity": 0.7
+        "fill-color": "#5a90c6",
+        "fill-opacity": 1
       }
     },
     {
@@ -36,7 +36,7 @@
       "source-layer": "depth_areas",
       "filter": ["all", ["==", ["geometry-type"], "Polygon"], ["has", "DRVAL1"], ["<=", ["to-number", ["get", "DRVAL1"], 0], 30], [">", ["to-number", ["get", "DRVAL1"], 0], 10]],
       "paint": {
-        "fill-color": "#C8E6F5",
+        "fill-color": "#A8C6DB",
         "fill-opacity": 0.7
       }
     },
@@ -47,7 +47,7 @@
       "source-layer": "depth_areas",
       "filter": ["all", ["==", ["geometry-type"], "Polygon"], ["has", "DRVAL1"], ["<=", ["to-number", ["get", "DRVAL1"], 0], 10]],
       "paint": {
-        "fill-color": "#E8F4FC",
+        "fill-color": "#D6E8F2",
         "fill-opacity": 0.7
       }
     },
@@ -58,7 +58,7 @@
       "source-layer": "depth_areas",
       "filter": ["all", ["==", ["geometry-type"], "Polygon"]],
       "paint": {
-        "fill-color": "#D6EBF5",
+        "fill-color": "#A8C6DB",
         "fill-opacity": 0.5
       }
     },
@@ -69,8 +69,8 @@
       "source-layer": "sea_areas",
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
-        "fill-color": "#D6EBF5",
-        "fill-opacity": 0.3
+        "fill-color": "#68a4e1",
+        "fill-opacity": 0.6
       }
     },
     {
@@ -80,8 +80,8 @@
       "source-layer": "land_areas",
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
-        "fill-color": "#F5E6C8",
-        "fill-opacity": 1.0
+        "fill-color": "#a6d8a6",
+        "fill-opacity": 1
       }
     },
     {
@@ -91,7 +91,7 @@
       "source-layer": "rivers_area",
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
-        "fill-color": "#B8D4E8",
+        "fill-color": "#67a3e0",
         "fill-opacity": 0.8
       }
     },
@@ -102,7 +102,7 @@
       "source-layer": "fairways",
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
-        "fill-color": "#D6EBF5",
+        "fill-color": "#D6E8F2",
         "fill-opacity": 0.4
       }
     },
@@ -113,7 +113,7 @@
       "source-layer": "anchorages",
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
-        "fill-color": "#E8D5F0",
+        "fill-color": "rgba(106, 142, 174, 0.25)",
         "fill-opacity": 0.5
       }
     },
@@ -147,7 +147,7 @@
       "source-layer": "shoreline_construction",
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
-        "fill-color": "#E8D5C8",
+        "fill-color": "#B8D68C",
         "fill-opacity": 0.7
       }
     },
@@ -191,7 +191,7 @@
       "source-layer": "coastline",
       "filter": ["==", ["geometry-type"], "LineString"],
       "paint": {
-        "line-color": "#4A3728",
+        "line-color": "#5D4E37",
         "line-width": 1.5
       }
     },
@@ -202,7 +202,7 @@
       "source-layer": "depth_contours",
       "filter": ["==", ["geometry-type"], "LineString"],
       "paint": {
-        "line-color": "#2E7D8A",
+        "line-color": "#4A6B8A",
         "line-width": 0.8
       }
     },
@@ -220,7 +220,7 @@
         "text-offset": [0, 0.5]
       },
       "paint": {
-        "text-color": "#2E7D8A",
+        "text-color": "#4A6B8A",
         "text-halo-color": "#FFFFFF",
         "text-halo-width": 1
       }
@@ -232,7 +232,7 @@
       "source-layer": "fairways_line",
       "filter": ["==", ["geometry-type"], "LineString"],
       "paint": {
-        "line-color": "#1A5F8A",
+        "line-color": "#C050B8",
         "line-width": 1.2,
         "line-dasharray": [5, 3]
       }
@@ -363,7 +363,7 @@
         "text-anchor": "top"
       },
       "paint": {
-        "text-color": "#8B6914",
+        "text-color": "#37474F",
         "text-halo-color": "#FFFFFF",
         "text-halo-width": 1
       }
@@ -375,16 +375,14 @@
       "source-layer": "buoys",
       "filter": ["==", ["geometry-type"], "Point"],
       "paint": {
-        "circle-radius": 5,
+        "circle-radius": 0.5,
         "circle-color": [
           "match",
           ["get", "BOYSHP"],
-          "1", "#FF0000",
-          "2", "#00FF00",
-          "#FFA500"
-        ],
-        "circle-stroke-color": "#000000",
-        "circle-stroke-width": 1
+          "1", "#F44336",
+          "2", "#4CAF50",
+          "#F44336"
+        ]
       }
     },
     {
@@ -556,7 +554,7 @@
       "source-layer": "restricted_areas",
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
-        "line-color": "#CC0000",
+        "line-color": "#E53935",
         "line-width": 1.5,
         "line-dasharray": [4, 2]
       }
@@ -568,7 +566,7 @@
       "source-layer": "anchorages",
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
-        "line-color": "#9932CC",
+        "line-color": "#4A6B8A",
         "line-width": 1.0,
         "line-dasharray": [2, 2]
       }
@@ -591,7 +589,7 @@
       "source-layer": "production_areas",
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
-        "line-color": "#FF8C00",
+        "line-color": "#FF9800",
         "line-width": 1.0,
         "line-dasharray": [3, 3]
       }
@@ -603,7 +601,7 @@
       "source-layer": "magvar",
       "filter": ["==", ["geometry-type"], "LineString"],
       "paint": {
-        "line-color": "#9932CC",
+        "line-color": "#4A6B8A",
         "line-width": 0.8,
         "line-dasharray": [2, 2]
       }
