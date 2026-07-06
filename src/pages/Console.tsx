@@ -329,7 +329,7 @@ export default function Console() {
       <div className="absolute inset-x-0 top-0 z-20">
         <div
           role="menubar"
-          className="flex h-9 items-center space-x-1 border p-1 shadow-sm rounded-none border-b border-none px-[9px] bg-[#d3d5d7]/70 backdrop-blur-sm"
+          className="flex h-9 items-center space-x-1 border p-1 shadow-sm rounded-none border-b border-none px-[9px] bg-[#d3d5d7]/75 backdrop-blur-md"
         >
           <div className="relative" ref={navyMenuRef}>
             <button
@@ -339,7 +339,7 @@ export default function Console() {
               <span className="mb-[2px]">NavyNavi</span>
             </button>
             {navyMenuOpen && (
-              <div className="absolute left-0 top-full mt-1 z-50 min-w-48 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/70 border-none">
+              <div className="absolute left-0 top-full mt-1 z-50 min-w-48 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/75 backdrop-blur-md border-none">
                 <button
                   onClick={() => {
                     setNavyMenuOpen(false)
@@ -369,7 +369,7 @@ export default function Console() {
               Tools
             </button>
             {toolsOpen && (
-              <div className="absolute left-0 top-full mt-1 z-50 min-w-48 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/70 border-none">
+              <div className="absolute left-0 top-full mt-1 z-50 min-w-48 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/75 backdrop-blur-md border-none">
                 {TOOLS_MENU.map((item, i) =>
                   item.separator ? (
                     <div key={`sep-${i}`} className="-mx-1 my-1 h-px opacity-20 bg-foreground/25" />
@@ -385,7 +385,7 @@ export default function Console() {
                       </button>
                       {aisSubmenuOpen && (
                         <div
-                          className="absolute left-full top-0 ml-1 min-w-32 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/70 border-none"
+                          className="absolute left-full top-0 ml-1 min-w-32 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md bg-secondary/75 backdrop-blur-md border-none"
                           onMouseEnter={() => setAisSubmenuOpen(true)}
                           onMouseLeave={() => setAisSubmenuOpen(false)}
                         >
@@ -461,7 +461,7 @@ export default function Console() {
           onClick={() => setAboutOpen(false)}
         >
           <div
-            className="relative w-full max-w-lg rounded-xl bg-white/70 p-8 shadow-2xl text-center"
+            className="relative w-full max-w-lg rounded-xl bg-white/75 p-8 shadow-2xl text-center backdrop-blur-md"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

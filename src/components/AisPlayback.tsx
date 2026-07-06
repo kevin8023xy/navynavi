@@ -170,7 +170,7 @@ export default function AisPlayback({
   }
 
   return (
-    <div className="absolute bottom-4 left-4 z-999 bg-background/70 w-[calc(100%-2rem)] max-w-[627px] rounded-xl border shadow-lg border-none p-4">
+    <div className="absolute bottom-4 left-4 z-999 bg-[#dadada]/75 w-[calc(100%-2rem)] max-w-[627px] rounded-xl border shadow-lg border-none p-4 backdrop-blur-md">
       <div className="grid grid-cols-2 gap-3 mb-4">
         {/* Start Time */}  
         <div>
@@ -189,7 +189,7 @@ export default function AisPlayback({
             type="button"
             onClick={() => startTimeRef.current?.showPicker()}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 bg-secondary shadow-2xl w-full justify-start text-left font-normal mt-1"
+            className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 bg-secondary/75 backdrop-blur-md shadow-2xl w-full justify-start text-left font-normal mt-1"
           >
             <Calendar className="mr-2 h-4 w-4" />
             <span>{formatTime(startTime)}</span>
@@ -212,7 +212,7 @@ export default function AisPlayback({
             type="button"
             onClick={() => endTimeRef.current?.showPicker()}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 bg-secondary shadow-2xl w-full justify-start text-left font-normal mt-1"
+            className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 bg-secondary/75 backdrop-blur-md shadow-2xl w-full justify-start text-left font-normal mt-1"
           >
             <Calendar className="mr-2 h-4 w-4" />
             <span>{formatTime(endTime)}</span>
@@ -232,7 +232,7 @@ export default function AisPlayback({
               setIntervalSec(Math.max(1, parseInt(e.target.value) || 1))
             }
             disabled={isLoading}
-            className="flex h-9 w-full rounded-md border border-input px-3 py-1 text-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 bg-secondary shadow-2xl border-none mt-1"
+            className="flex h-9 w-full rounded-md border border-input px-3 py-1 text-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 bg-secondary/75 backdrop-blur-md shadow-2xl border-none mt-1"
           />
         </div>
         {/* Speed */}
@@ -246,7 +246,7 @@ export default function AisPlayback({
               type="button"
               onClick={() => setSpeedOpen(!speedOpen)}
               disabled={isLoading}
-              className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 bg-secondary shadow-2xl border-none"
+              className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 bg-secondary/75 backdrop-blur-md shadow-2xl border-none"
             >
               <span>{speed}</span>
               <ChevronDown
@@ -258,7 +258,7 @@ export default function AisPlayback({
             {speedOpen && (
               <div
                 className="absolute bottom-full left-0 right-0 mb-1 z-30 min-w-32 overflow-hidden rounded-md border p-1 text-popover-foreground shadow-md border-none"
-                style={{ backgroundColor: '#ffffff' }}
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)', backdropFilter: 'blur(12px)' }}
               >
                 {PLAYBACK_SPEEDS.map((s) => (
                   <button
