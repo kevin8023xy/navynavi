@@ -1,0 +1,612 @@
+{
+  "version": 8,
+  "name": "S-52 ENC Chart",
+  "sources": {
+    "navy-chart": {
+      "type": "vector",
+      "url": "pmtiles://pmtiles/navy_chart.pmtiles",
+      "attribution": "S-57 ENC Data"
+    }
+  },
+  "sprite": "",
+  "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#D6EBF5"
+      }
+    },
+    {
+      "id": "depth_areas-deep",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "depth_areas",
+      "filter": ["all", ["==", ["geometry-type"], "Polygon"], ["has", "DRVAL1"], [">", ["to-number", ["get", "DRVAL1"], 0], 30]],
+      "paint": {
+        "fill-color": "#A6D8F0",
+        "fill-opacity": 0.7
+      }
+    },
+    {
+      "id": "depth_areas-medium",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "depth_areas",
+      "filter": ["all", ["==", ["geometry-type"], "Polygon"], ["has", "DRVAL1"], ["<=", ["to-number", ["get", "DRVAL1"], 0], 30], [">", ["to-number", ["get", "DRVAL1"], 0], 10]],
+      "paint": {
+        "fill-color": "#C8E6F5",
+        "fill-opacity": 0.7
+      }
+    },
+    {
+      "id": "depth_areas-shallow",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "depth_areas",
+      "filter": ["all", ["==", ["geometry-type"], "Polygon"], ["has", "DRVAL1"], ["<=", ["to-number", ["get", "DRVAL1"], 0], 10]],
+      "paint": {
+        "fill-color": "#E8F4FC",
+        "fill-opacity": 0.7
+      }
+    },
+    {
+      "id": "depth_areas-default",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "depth_areas",
+      "filter": ["all", ["==", ["geometry-type"], "Polygon"]],
+      "paint": {
+        "fill-color": "#D6EBF5",
+        "fill-opacity": 0.5
+      }
+    },
+    {
+      "id": "sea_areas",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "sea_areas",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#D6EBF5",
+        "fill-opacity": 0.3
+      }
+    },
+    {
+      "id": "land_areas",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "land_areas",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#F5E6C8",
+        "fill-opacity": 1.0
+      }
+    },
+    {
+      "id": "rivers_area",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "rivers_area",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#B8D4E8",
+        "fill-opacity": 0.8
+      }
+    },
+    {
+      "id": "fairways",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "fairways",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#D6EBF5",
+        "fill-opacity": 0.4
+      }
+    },
+    {
+      "id": "anchorages",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "anchorages",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#E8D5F0",
+        "fill-opacity": 0.5
+      }
+    },
+    {
+      "id": "restricted_areas",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "restricted_areas",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#F5D5D5",
+        "fill-opacity": 0.4,
+        "fill-pattern": ""
+      }
+    },
+    {
+      "id": "berths",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "berths",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#D5E8D5",
+        "fill-opacity": 0.6
+      }
+    },
+    {
+      "id": "shoreline_construction",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "shoreline_construction",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#E8D5C8",
+        "fill-opacity": 0.7
+      }
+    },
+    {
+      "id": "bridges",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "bridges",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#C8C8C8",
+        "fill-opacity": 0.8
+      }
+    },
+    {
+      "id": "admin_areas",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "admin_areas",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#F0E8F5",
+        "fill-opacity": 0.3
+      }
+    },
+    {
+      "id": "meta_coverage",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "meta_coverage",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "fill-color": "#F5F5F5",
+        "fill-opacity": 0.2
+      }
+    },
+    {
+      "id": "coastline",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "coastline",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#4A3728",
+        "line-width": 1.5
+      }
+    },
+    {
+      "id": "depth_contours",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "depth_contours",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#2E7D8A",
+        "line-width": 0.8
+      }
+    },
+    {
+      "id": "depth_contours-label",
+      "type": "symbol",
+      "source": "navy-chart",
+      "source-layer": "depth_contours",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": ["concat", ["get", "VALDCO"], "m"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 10,
+        "text-offset": [0, 0.5]
+      },
+      "paint": {
+        "text-color": "#2E7D8A",
+        "text-halo-color": "#FFFFFF",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "fairways_line",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "fairways_line",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#1A5F8A",
+        "line-width": 1.2,
+        "line-dasharray": [5, 3]
+      }
+    },
+    {
+      "id": "rivers",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "rivers",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#6BA3C7",
+        "line-width": 1.0
+      }
+    },
+    {
+      "id": "roads",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "roads",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#8B7355",
+        "line-width": 1.0
+      }
+    },
+    {
+      "id": "tunnels",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "tunnels",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#666666",
+        "line-width": 1.0,
+        "line-dasharray": [3, 2]
+      }
+    },
+    {
+      "id": "pipelines",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "pipelines",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#8B4513",
+        "line-width": 1.0
+      }
+    },
+    {
+      "id": "fences",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "fences",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#8B7355",
+        "line-width": 0.8,
+        "line-dasharray": [2, 2]
+      }
+    },
+    {
+      "id": "radar_call",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "radar_call",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#4A90D9",
+        "line-width": 1.0,
+        "line-dasharray": [4, 4]
+      }
+    },
+    {
+      "id": "land_line",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "land_line",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#8B7355",
+        "line-width": 0.6
+      }
+    },
+    {
+      "id": "soundings",
+      "type": "symbol",
+      "source": "navy-chart",
+      "source-layer": "soundings",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "layout": {
+        "text-field": ["get", "VALSOU"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 9,
+        "text-anchor": "center"
+      },
+      "paint": {
+        "text-color": "#1A5276",
+        "text-halo-color": "#FFFFFF",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "lights",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "lights",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 4,
+        "circle-color": "#FFD700",
+        "circle-stroke-color": "#8B6914",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "lights-label",
+      "type": "symbol",
+      "source": "navy-chart",
+      "source-layer": "lights",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "minzoom": 12,
+      "layout": {
+        "text-field": ["concat", ["get", "LITCHR"], " ", ["get", "SIGPER"], "s"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 9,
+        "text-offset": [0, 1.2],
+        "text-anchor": "top"
+      },
+      "paint": {
+        "text-color": "#8B6914",
+        "text-halo-color": "#FFFFFF",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "buoys",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "buoys",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 5,
+        "circle-color": [
+          "match",
+          ["get", "BOYSHP"],
+          "1", "#FF0000",
+          "2", "#00FF00",
+          "#FFA500"
+        ],
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "beacons",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "beacons",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 4,
+        "circle-color": "#8B4513",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "topmarks",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "topmarks",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 3,
+        "circle-color": "#FF6347",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "obstructions",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "obstructions",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 4,
+        "circle-color": "#8B0000",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "wrecks",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "wrecks",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 5,
+        "circle-color": "#4A0000",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1.5
+      }
+    },
+    {
+      "id": "landmarks",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "landmarks",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 4,
+        "circle-color": "#6B8E23",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "buildings",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "buildings",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 3,
+        "circle-color": "#A0522D",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "pilots",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "pilots",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 4,
+        "circle-color": "#4169E1",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "radar_stations",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "radar_stations",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 4,
+        "circle-color": "#9370DB",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "route_beacons",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "route_beacons",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 4,
+        "circle-color": "#20B2AA",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "land_elevation",
+      "type": "symbol",
+      "source": "navy-chart",
+      "source-layer": "land_elevation",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "minzoom": 11,
+      "layout": {
+        "text-field": ["concat", ["get", "ELEVAT"], "m"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 9,
+        "text-anchor": "center"
+      },
+      "paint": {
+        "text-color": "#5D4E37",
+        "text-halo-color": "#FFFFFF",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "tidal_stations",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "tidal_stations",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 4,
+        "circle-color": "#008080",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "tidal_w_stations",
+      "type": "circle",
+      "source": "navy-chart",
+      "source-layer": "tidal_w_stations",
+      "filter": ["==", ["geometry-type"], "Point"],
+      "paint": {
+        "circle-radius": 4,
+        "circle-color": "#008080",
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1
+      }
+    },
+    {
+      "id": "restricted_areas-outline",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "restricted_areas",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "line-color": "#CC0000",
+        "line-width": 1.5,
+        "line-dasharray": [4, 2]
+      }
+    },
+    {
+      "id": "anchorages-outline",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "anchorages",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "line-color": "#9932CC",
+        "line-width": 1.0,
+        "line-dasharray": [2, 2]
+      }
+    },
+    {
+      "id": "berths-outline",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "berths",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "line-color": "#228B22",
+        "line-width": 1.0
+      }
+    },
+    {
+      "id": "production_areas-outline",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "production_areas",
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": {
+        "line-color": "#FF8C00",
+        "line-width": 1.0,
+        "line-dasharray": [3, 3]
+      }
+    },
+    {
+      "id": "magvar",
+      "type": "line",
+      "source": "navy-chart",
+      "source-layer": "magvar",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#9932CC",
+        "line-width": 0.8,
+        "line-dasharray": [2, 2]
+      }
+    }
+  ]
+}

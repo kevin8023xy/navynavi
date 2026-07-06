@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Layers } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import compassIcon from '../assets/compass.png'
@@ -27,6 +27,7 @@ export default function Console() {
   const [aisSubmenuOpen, setAisSubmenuOpen] = useState(false)
   const toolsRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
+  const [chartVisible, setChartVisible] = useState(true)
 
   // Playback data surfaced from AisPlayback module for map rendering
   const [allTracks, setAllTracks] = useState<any[]>([])
@@ -34,40 +35,62 @@ export default function Console() {
   const [intervalSec, setIntervalSec] = useState(10)
   const [iconLoaded, setIconLoaded] = useState(false)
 
-  // ── Initialize map with CARTO basemap + Mapbox vector overlay ──
+  // ── Initialize map with CARTO basemap + Mapbox vector overlay + S-57 ENC chart ──
   useEffect(() => {
     if (!mapContainer.current || map.current) return
 
-    try {
-      const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN ?? ''
+    let protocolCleanup: (() => void) | null = null
 
-      const m = new maplibregl.Map({
-        container: mapContainer.current,
-        style: {
-          version: 8,
-          sources: {
-            'raster-tiles': {
-              type: 'raster',
-              tiles: ['https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
-              tileSize: 256,
-              attribution:
-                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    const init = async () => {
+      try {
+        const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN ?? ''
+
+        // 注册 PMTiles protocol（必须在地图创建前完成）
+        try {
+          const { Protocol } = await import('pmtiles')
+          const protocol = new Protocol()
+          maplibregl.addProtocol('pmtiles', protocol.tile)
+          protocolCleanup = () => maplibregl.removeProtocol('pmtiles')
+          console.log('[Map] PMTiles protocol registered')
+        } catch (e) {
+          console.warn('[Map] Failed to load PMTiles protocol:', e)
+        }
+
+        const m = new maplibregl.Map({
+          container: mapContainer.current!,
+          style: {
+            version: 8,
+            glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+            sources: {
+              'raster-tiles': {
+                type: 'raster',
+                tiles: ['https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                attribution:
+                  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+              },
+              'navy-chart': {
+                type: 'vector',
+                url: 'pmtiles://pmtiles/navy_chart.pmtiles',
+                attribution: 'S-57 ENC Data',
+                minzoom: 0,
+                maxzoom: 5,
+              },
             },
+            layers: [
+              {
+                id: 'simple-tiles',
+                type: 'raster',
+                source: 'raster-tiles',
+                minzoom: 0,
+                maxzoom: 19,
+              },
+            ],
           },
-          layers: [
-            {
-              id: 'simple-tiles',
-              type: 'raster',
-              source: 'raster-tiles',
-              minzoom: 0,
-              maxzoom: 19,
-            },
-          ],
-        },
-        center: [121.863873, 40.242037],
-        zoom: 9.5,
-        attributionControl: false,
-      })
+          center: [121.863873, 40.242037],
+          zoom: 9.5,
+          attributionControl: false,
+        })
 
       m.addControl(new maplibregl.NavigationControl(), 'bottom-right')
       m.addControl(new maplibregl.ScaleControl({ maxWidth: 120 }), 'bottom-left')
@@ -80,8 +103,26 @@ export default function Console() {
         setError(e.error?.message || 'Map failed to load')
       })
 
-      m.on('load', () => {
+      m.on('load', async () => {
         console.log('[Map] Basemap loaded, adding custom tilesets…')
+
+        // 加载 S-52 海图样式
+        try {
+          const res = await fetch('/styles/s52-chart.json')
+          if (res.ok) {
+            const s52Style = await res.json()
+            // 将 S-52 图层添加到当前地图
+            s52Style.layers.forEach((layer: any) => {
+              if (layer.id === 'background') return
+              if (!m.getLayer(layer.id)) {
+                m.addLayer({ ...layer, layout: { visibility: chartVisible ? 'visible' : 'none', ...layer.layout } })
+              }
+            })
+            console.log('[Map] S-52 chart layers added')
+          }
+        } catch (e) {
+          console.warn('[Map] Failed to load S-52 style:', e)
+        }
 
         // 加载船舶图标（用 Image 对象更可靠）
         const img = new Image()
@@ -158,14 +199,18 @@ export default function Console() {
 
       map.current = m
 
-      const rect = mapContainer.current.getBoundingClientRect()
+      const rect = mapContainer.current!.getBoundingClientRect()
       console.log('[Map] Container size:', rect.width, 'x', rect.height)
     } catch (e) {
       console.error('[Map] Init error:', e)
       setError('Failed to initialize map')
     }
+    }
+
+    init()
 
     return () => {
+      protocolCleanup?.()
       map.current?.remove()
       map.current = null
     }
@@ -177,18 +222,28 @@ export default function Console() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Close tools menu on outside click
+  // Toggle chart layer visibility
   useEffect(() => {
-    if (!toolsOpen) return
-    const handleClick = (e: MouseEvent) => {
-      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) {
-        setToolsOpen(false)
-        setAisSubmenuOpen(false)
+    if (!map.current) return
+    const chartLayerIds = [
+      'depth_areas-deep', 'depth_areas-medium', 'depth_areas-shallow', 'depth_areas-default',
+      'sea_areas', 'land_areas', 'rivers_area', 'fairways', 'anchorages',
+      'restricted_areas', 'berths', 'shoreline_construction', 'bridges',
+      'admin_areas', 'meta_coverage', 'coastline', 'depth_contours',
+      'depth_contours-label', 'fairways_line', 'rivers', 'roads', 'tunnels',
+      'pipelines', 'fences', 'radar_call', 'land_line', 'soundings',
+      'lights', 'lights-label', 'buoys', 'beacons', 'topmarks',
+      'obstructions', 'wrecks', 'landmarks', 'buildings', 'pilots',
+      'radar_stations', 'route_beacons', 'land_elevation', 'tidal_stations',
+      'tidal_w_stations', 'restricted_areas-outline', 'anchorages-outline',
+      'berths-outline', 'production_areas-outline', 'magvar',
+    ]
+    chartLayerIds.forEach((id) => {
+      if (map.current!.getLayer(id)) {
+        map.current!.setLayoutProperty(id, 'visibility', chartVisible ? 'visible' : 'none')
       }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [toolsOpen])
+    })
+  }, [chartVisible])
 
   // ── Update map ships layer based on playbackTime ──
   useEffect(() => {
@@ -308,6 +363,14 @@ export default function Console() {
               </div>
             )}
           </div>
+          <button
+            onClick={() => setChartVisible(!chartVisible)}
+            className={`flex cursor-default select-none items-center rounded-sm px-3 py-1 text-sm font-medium outline-none focus:bg-accent focus:text-accent-foreground ${chartVisible ? 'bg-accent text-accent-foreground' : ''}`}
+            title={chartVisible ? '隐藏海图' : '显示海图'}
+          >
+            <Layers className="h-4 w-4 mr-1" />
+            ENC
+          </button>
         </div>
       </div>
 
