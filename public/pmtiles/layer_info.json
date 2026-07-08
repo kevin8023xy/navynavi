@@ -1,0 +1,341 @@
+{
+  "depth_areas": {
+    "description": "深度区域/海底区域",
+    "s52_color": "DEPDW",
+    "geometry_type": "R",
+    "source_codes": [
+      "DEPARE",
+      "DMPGRD",
+      "SBDARE"
+    ],
+    "feature_count": 310
+  },
+  "depth_contours": {
+    "description": "等深线",
+    "s52_color": "DEPCN",
+    "geometry_type": "L",
+    "source_codes": [
+      "DEPCNT"
+    ],
+    "feature_count": 239
+  },
+  "soundings": {
+    "description": "测深点",
+    "s52_color": "SNDG1",
+    "geometry_type": "P",
+    "source_codes": [
+      "SOUNDG"
+    ],
+    "feature_count": 2313
+  },
+  "land_areas": {
+    "description": "陆地/建筑区/港口/湖泊",
+    "s52_color": "LANDA",
+    "geometry_type": "R",
+    "source_codes": [
+      "LNDARE",
+      "LNDRGN",
+      "BUAARE",
+      "HRBARE",
+      "LAKARE"
+    ],
+    "feature_count": 177
+  },
+  "land_elevation": {
+    "description": "高程点",
+    "s52_color": "LNDEL",
+    "geometry_type": "P",
+    "source_codes": [
+      "LNDELV"
+    ],
+    "feature_count": 3
+  },
+  "land_line": {
+    "description": "等高线",
+    "s52_color": "LNDEL",
+    "geometry_type": "L",
+    "source_codes": [
+      "LNDELV"
+    ],
+    "feature_count": 65
+  },
+  "coastline": {
+    "description": "海岸线",
+    "s52_color": "COALN",
+    "geometry_type": "L",
+    "source_codes": [
+      "COALNE"
+    ],
+    "feature_count": 37
+  },
+  "fairways": {
+    "description": "航道区域",
+    "s52_color": "FAIRW",
+    "geometry_type": "R",
+    "source_codes": [
+      "FAIRWY"
+    ],
+    "feature_count": 12
+  },
+  "fairways_line": {
+    "description": "导航线/推荐航线",
+    "s52_color": "NAVLN",
+    "geometry_type": "L",
+    "source_codes": [
+      "NAVLNE",
+      "RECTRC"
+    ],
+    "feature_count": 8
+  },
+  "route_beacons": {
+    "description": "航线信标",
+    "s52_color": "RTPBC",
+    "geometry_type": "P",
+    "source_codes": [
+      "RTPBCN"
+    ],
+    "feature_count": 4
+  },
+  "roads": {
+    "description": "道路/铁路/堤道",
+    "s52_color": "ROADW",
+    "geometry_type": "L",
+    "source_codes": [
+      "ROADWY",
+      "RAILWY",
+      "CAUSWY"
+    ],
+    "feature_count": 103
+  },
+  "tunnels": {
+    "description": "隧道",
+    "s52_color": "TUNNL",
+    "geometry_type": "L",
+    "source_codes": [
+      "TUNNEL"
+    ],
+    "feature_count": 1
+  },
+  "bridges": {
+    "description": "桥梁",
+    "s52_color": "BRIDG",
+    "geometry_type": "R",
+    "source_codes": [
+      "BRIDGE"
+    ],
+    "feature_count": 7
+  },
+  "rivers_area": {
+    "description": "河流区域",
+    "s52_color": "RIVER",
+    "geometry_type": "R",
+    "source_codes": [
+      "RIVERS"
+    ],
+    "feature_count": 2
+  },
+  "sea_areas": {
+    "description": "海域",
+    "s52_color": "SEAAR",
+    "geometry_type": "R",
+    "source_codes": [
+      "SEAARE"
+    ],
+    "feature_count": 11
+  },
+  "obstructions": {
+    "description": "障碍物/水下岩石",
+    "s52_color": "OBSTR",
+    "geometry_type": "P",
+    "source_codes": [
+      "OBSTRN",
+      "UWTROC"
+    ],
+    "feature_count": 5
+  },
+  "wrecks": {
+    "description": "沉船",
+    "s52_color": "WRECK",
+    "geometry_type": "P",
+    "source_codes": [
+      "WRECKS"
+    ],
+    "feature_count": 12
+  },
+  "buoys": {
+    "description": "浮标",
+    "s52_color": "BOYSP",
+    "geometry_type": "P",
+    "source_codes": [
+      "BOYCAR",
+      "BOYISD",
+      "BOYLAT",
+      "BOYSPP"
+    ],
+    "feature_count": 68
+  },
+  "beacons": {
+    "description": "立标",
+    "s52_color": "BCNSP",
+    "geometry_type": "P",
+    "source_codes": [
+      "BCNSPP"
+    ],
+    "feature_count": 37
+  },
+  "lights": {
+    "description": "灯塔/灯标",
+    "s52_color": "LIGHT",
+    "geometry_type": "P",
+    "source_codes": [
+      "LIGHTS"
+    ],
+    "feature_count": 115
+  },
+  "topmarks": {
+    "description": "顶标",
+    "s52_color": "TOPMA",
+    "geometry_type": "P",
+    "source_codes": [
+      "TOPMAR"
+    ],
+    "feature_count": 78
+  },
+  "radar_stations": {
+    "description": "雷达站/无线电指向标",
+    "s52_color": "RADAR",
+    "geometry_type": "P",
+    "source_codes": [
+      "RADSTA",
+      "RDOSTA"
+    ],
+    "feature_count": 1
+  },
+  "buildings": {
+    "description": "建筑物",
+    "s52_color": "BUISG",
+    "geometry_type": "P",
+    "source_codes": [
+      "BUISGL"
+    ],
+    "feature_count": 6
+  },
+  "landmarks": {
+    "description": "地标",
+    "s52_color": "LNDMK",
+    "geometry_type": "P",
+    "source_codes": [
+      "LNDMRK"
+    ],
+    "feature_count": 3
+  },
+  "pilots": {
+    "description": "引航作业点",
+    "s52_color": "PILBO",
+    "geometry_type": "P",
+    "source_codes": [
+      "PILBOP"
+    ],
+    "feature_count": 3
+  },
+  "radar_call": {
+    "description": "雷达呼叫线",
+    "s52_color": "RDOCA",
+    "geometry_type": "L",
+    "source_codes": [
+      "RDOCAL"
+    ],
+    "feature_count": 2
+  },
+  "anchorages": {
+    "description": "锚地",
+    "s52_color": "ACHAR",
+    "geometry_type": "R",
+    "source_codes": [
+      "ACHARE"
+    ],
+    "feature_count": 5
+  },
+  "restricted_areas": {
+    "description": "限制区/禁锚区",
+    "s52_color": "RESAR",
+    "geometry_type": "R",
+    "source_codes": [
+      "RESARE",
+      "CTNARE"
+    ],
+    "feature_count": 2
+  },
+  "production_areas": {
+    "description": "生产区/油田",
+    "s52_color": "PRDAR",
+    "geometry_type": "R",
+    "source_codes": [
+      "PRDARE"
+    ],
+    "feature_count": 1
+  },
+  "fences": {
+    "description": "栅栏/围墙",
+    "s52_color": "FNCLN",
+    "geometry_type": "L",
+    "source_codes": [
+      "FNCLNE"
+    ],
+    "feature_count": 1
+  },
+  "gates": {
+    "description": "闸门/船闸",
+    "s52_color": "GATCO",
+    "geometry_type": "R",
+    "source_codes": [
+      "GATCON"
+    ],
+    "feature_count": 1
+  },
+  "shoreline_construction": {
+    "description": "岸线建筑",
+    "s52_color": "SLCON",
+    "geometry_type": "R",
+    "source_codes": [
+      "SLCONS"
+    ],
+    "feature_count": 106
+  },
+  "slope_top": {
+    "description": "坡顶线",
+    "s52_color": "SLOTO",
+    "geometry_type": "R",
+    "source_codes": [
+      "SLOTOP"
+    ],
+    "feature_count": 18
+  },
+  "magvar": {
+    "description": "磁差信息",
+    "s52_color": "MAGVA",
+    "geometry_type": "R",
+    "source_codes": [
+      "MAGVAR"
+    ],
+    "feature_count": 4
+  },
+  "tidal_streams": {
+    "description": "潮汐流",
+    "s52_color": "TS",
+    "geometry_type": "R",
+    "source_codes": [
+      "TS"
+    ],
+    "feature_count": 19
+  },
+  "tidal_w stations": {
+    "description": "潮汐观测站",
+    "s52_color": "SISTA",
+    "geometry_type": "P",
+    "source_codes": [
+      "SISTAW"
+    ],
+    "feature_count": 1
+  }
+}

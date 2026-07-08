@@ -41,11 +41,13 @@ export default function AisPlayback({
   const [speedOpen, setSpeedOpen] = useState(false)
   const [allTracks, setAllTracks] = useState<any[]>([])
   const [playbackTime, setPlaybackTime] = useState<number>(0)
+  const [emptyMessage, setEmptyMessage] = useState<string | null>(null)
 
   const startTimeRef = useRef<HTMLInputElement>(null)
   const endTimeRef = useRef<HTMLInputElement>(null)
   const speedRef = useRef<HTMLDivElement>(null)
   const playbackTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
 
   const startUnix = Math.floor(new Date(startTime).getTime() / 1000)
   const endUnix = Math.floor(new Date(endTime).getTime() / 1000)
@@ -116,6 +118,7 @@ export default function AisPlayback({
     setIsLoading(true)
     setLoadProgress(5)
     onError?.(null)
+    setEmptyMessage(null)
     setAllTracks([])
 
     const s = Math.floor(new Date(startTime).getTime() / 1000)
@@ -126,6 +129,11 @@ export default function AisPlayback({
       const data = await queryTracks(s, e)
       setAllTracks(data)
       setPlaybackTime(s)
+      if (data.length === 0) {
+        setEmptyMessage(
+          `No AIS records found between ${formatTime(startTime)} and ${formatTime(endTime)}.`,
+        )
+      }
     } catch (err: any) {
       onError?.(err?.message || 'Failed to load AIS data')
     } finally {
@@ -374,6 +382,12 @@ export default function AisPlayback({
         </div>
       )}
 
+      {emptyMessage && (
+        <div className="mb-3 rounded-md border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-800 backdrop-blur-sm">
+          {emptyMessage}
+        </div>
+      )}
+
       {/* Playback progress - draggable */}
       {allTracks.length > 0 && (
         <div className="space-y-2">
@@ -395,6 +409,7 @@ export default function AisPlayback({
           />
         </div>
       )}
+
     </div>
   )
 }

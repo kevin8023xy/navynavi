@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Layers } from 'lucide-react'
+import { ChevronRight, Layers, Ship, MapPin, Navigation, Anchor, Clock } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import compassIcon from '../assets/compass.png'
@@ -19,6 +19,71 @@ const TOOLS_MENU = [
   { separator: true },
   { label: 'Close All...' },
 ]
+
+const NAV_STATUS: Record<number, string> = {
+  0: 'Under way using engine',
+  1: 'At anchor',
+  2: 'Not under command',
+  3: 'Restricted maneuverability',
+  4: 'Constrained by draught',
+  5: 'Moored',
+  6: 'Grounded',
+  7: 'Engaged in fishing',
+  8: 'Under way sailing',
+  9: 'Reserved',
+  10: 'Reserved',
+  11: 'Power-driven vessel towing',
+  12: 'Reserved',
+  13: 'Reserved',
+  14: 'Reserved',
+}
+
+function navStatusText(status: number | null) {
+  if (status == null || status === 15) return 'Undefined'
+  return NAV_STATUS[status] ?? 'Undefined'
+}
+
+function formatLatLng(lat: number, lng: number) {
+  const ns = lat >= 0 ? 'N' : 'S'
+  const ew = lng >= 0 ? 'E' : 'W'
+  return `${Math.abs(lat).toFixed(4)}°${ns}, ${Math.abs(lng).toFixed(4)}°${ew}`
+}
+
+function formatSpeed(sog: number | null) {
+  if (sog == null) return '-- kt'
+  return `${sog.toFixed(1)} kt`
+}
+
+function formatCourse(value: number | null) {
+  if (value == null) return '--'
+  return `${Math.round(value)}°`
+}
+
+function formatUtcTime(ts: number) {
+  const d = new Date(ts * 1000)
+  const opts: Intl.DateTimeFormatOptions = {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+  }
+  return `${d.toLocaleString('en-US', opts)} UTC`
+}
+
+interface HoverShip {
+  x: number
+  y: number
+  mmsi: number
+  sog: number | null
+  cog: number | null
+  heading: number | null
+  status: number | null
+  timestamp: number
+  lat: number
+  lng: number
+}
 
 export default function Console() {
   const mapContainer = useRef<HTMLDivElement>(null)
@@ -64,6 +129,9 @@ export default function Console() {
   const [playbackTime, setPlaybackTime] = useState<number>(0)
   const [intervalSec, setIntervalSec] = useState(10)
   const [iconLoaded, setIconLoaded] = useState(false)
+  const [cursorCoords, setCursorCoords] = useState<{ lng: number; lat: number } | null>(null)
+  const [hoverShip, setHoverShip] = useState<HoverShip | null>(null)
+  const shipListenersAdded = useRef(false)
 
   // ── Initialize map with CARTO basemap + Mapbox vector overlay + S-57 ENC chart ──
   useEffect(() => {
@@ -103,8 +171,8 @@ export default function Console() {
                 type: 'vector',
                 url: 'pmtiles://pmtiles/navy_chart.pmtiles',
                 attribution: 'S-57 ENC Data',
-                minzoom: 0,
-                maxzoom: 5,
+                minzoom: 6,
+                maxzoom: 14,
               },
             },
             layers: [
@@ -122,7 +190,6 @@ export default function Console() {
           attributionControl: false,
         })
 
-      m.addControl(new maplibregl.NavigationControl(), 'bottom-right')
       m.addControl(new maplibregl.ScaleControl({ maxWidth: 120 }), 'bottom-left')
       m.addControl(
         new maplibregl.AttributionControl({ compact: true }),
@@ -131,6 +198,10 @@ export default function Console() {
 
       m.on('error', (e) => {
         setError(e.error?.message || 'Map failed to load')
+      })
+
+      m.on('mousemove', (e) => {
+        setCursorCoords({ lng: e.lngLat.lng, lat: e.lngLat.lat })
       })
 
       m.on('load', async () => {
@@ -225,9 +296,133 @@ export default function Console() {
           .catch((err) => {
             console.warn('[Map] Failed to load custom tilesets:', err)
           })
+
+        // 添加自定义 line1 线段（第二条线：#F2D0E8）
+        try {
+          m.addSource('line1-2', {
+            type: 'geojson',
+            data: {
+              type: 'FeatureCollection',
+              features: [
+                {
+                  type: 'Feature',
+                  properties: {},
+                  geometry: {
+                    type: 'LineString',
+                    coordinates: [
+                      [121.864398, 40.302282],
+                      [121.923241, 40.312429],
+                      [121.991482, 40.307805],
+                    ],
+                  },
+                },
+              ],
+            },
+          })
+          m.addLayer({
+            id: 'line1-2-line',
+            type: 'line',
+            source: 'line1-2',
+            paint: {
+              'line-color': '#F2D0E8',
+              'line-width': 1,
+              'line-dasharray': [4, 4],
+            },
+          })
+          console.log('[Map] Line1-2 added')
+        } catch (e) {
+          console.warn('[Map] Failed to add line1-2:', e)
+        }
+
+        // 添加自定义 line1 线段（第一条线：#4fd0c7）
+        try {
+          m.addSource('line1', {
+            type: 'geojson',
+            data: '/data/line1.geojson',
+          })
+          m.addLayer({
+            id: 'line1-line',
+            type: 'line',
+            source: 'line1',
+            paint: {
+              'line-color': '#4fd0c7',
+              'line-width': 1,
+              'line-dasharray': [4, 4],
+            },
+          })
+          console.log('[Map] Line1 added')
+        } catch (e) {
+          console.warn('[Map] Failed to add line1:', e)
+        }
+
+        // 添加自定义航行区域面
+        try {
+          m.addSource('zone-polygon', {
+            type: 'geojson',
+            data: '/data/zone-polygon.geojson',
+          })
+          m.addLayer({
+            id: 'zone-polygon-fill',
+            type: 'fill',
+            source: 'zone-polygon',
+            paint: {
+              'fill-color': 'rgba(0, 0, 0, 0.1)',
+            },
+          })
+          m.addLayer({
+            id: 'zone-polygon-line',
+            type: 'line',
+            source: 'zone-polygon',
+            paint: {
+              'line-color': 'rgba(0, 0, 0, 1)',
+              'line-width': 1,
+              'line-dasharray': [2, 2],
+            },
+          })
+          console.log('[Map] Zone polygon added')
+
+          // 为每个面添加中心 id 标签
+          try {
+            const res2 = await fetch('/data/zone-polygon.geojson')
+            const zoneData = await res2.json()
+            zoneData.features.forEach((feature: any, index: number) => {
+              const coords = feature.geometry.coordinates[0] as [number, number][]
+              const centroid = coords
+                .reduce((acc, [lng, lat]) => [acc[0] + lng, acc[1] + lat], [0, 0])
+                .map((v) => v / coords.length) as [number, number]
+
+              const el = document.createElement('div')
+              el.style.cssText = `
+                width: 20px;
+                height: 20px;
+                border-radius: 4px;
+                background: rgba(255, 255, 255, 0.2);
+                color: rgba(0, 0, 0, 0.9);
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+                pointer-events: none;
+                font-family: system-ui, -apple-system, sans-serif;
+              `
+              el.textContent = String(feature.properties?.id ?? index + 1)
+
+              new maplibregl.Marker({ element: el, anchor: 'center' })
+                .setLngLat(centroid)
+                .addTo(m)
+            })
+          } catch (e) {
+            console.warn('[Map] Failed to add zone labels:', e)
+          }
+        } catch (e) {
+          console.warn('[Map] Failed to add zone polygon:', e)
+        }
+
       })
 
       map.current = m
+
 
       const rect = mapContainer.current!.getBoundingClientRect()
       console.log('[Map] Container size:', rect.width, 'x', rect.height)
@@ -295,7 +490,12 @@ export default function Console() {
         properties: {
           mmsi: r.mmsi,
           sog: r.sog,
-          cog: (r.cog != null && r.cog !== 511) ? r.cog : 0,
+          cog: r.cog,
+          heading: r.heading,
+          status: r.status,
+          timestamp: r.timestamp,
+          lat: r.lat,
+          lng: r.lng,
         },
       })),
     }
@@ -316,10 +516,31 @@ export default function Console() {
           'icon-image': 'ship-icon',
           'icon-size': 0.04,
           'icon-allow-overlap': true,
-          'icon-rotate': ['get', 'cog'],
+          'icon-rotate': ['coalesce', ['case', ['==', ['get', 'cog'], 511], 0, ['get', 'cog']], 0],
           'icon-rotation-alignment': 'map',
         },
       })
+
+      if (!shipListenersAdded.current) {
+        const m = map.current
+        m.on('mouseenter', 'ships-points', () => {
+          m.getCanvas().style.cursor = 'pointer'
+        })
+        m.on('mouseleave', 'ships-points', () => {
+          m.getCanvas().style.cursor = ''
+          setHoverShip(null)
+        })
+        m.on('mousemove', 'ships-points', (e) => {
+          const f = e.features?.[0]
+          if (!f) return
+          setHoverShip({
+            x: e.point.x,
+            y: e.point.y,
+            ...(f.properties as any),
+          })
+        })
+        shipListenersAdded.current = true
+      }
     }
   }, [playbackTime, allTracks, intervalSec, iconLoaded])
 
@@ -433,6 +654,60 @@ export default function Console() {
 
       {/* ── Full-screen Map ── */}
       <div ref={mapContainer} className="flex-1 min-h-0" />
+
+      {/* ── Cursor Coordinates (bottom-right) ── */}
+      {cursorCoords && (
+        <div className="absolute bottom-2 right-2 z-10 rounded-md border px-2 py-1 text-xs font-mono shadow-md bg-white/75 backdrop-blur-md border-white/30 text-slate-700">
+          {cursorCoords.lat.toFixed(6)}°, {cursorCoords.lng.toFixed(6)}°
+        </div>
+      )}
+
+      {/* ── Ship Hover Card ── */}
+      {hoverShip && (
+        <div
+          className="absolute z-30 pointer-events-none min-w-[260px] rounded-xl border border-white/50 bg-white/70 px-4 py-3 shadow-xl backdrop-blur-md text-slate-700"
+          style={{ left: hoverShip.x + 12, top: hoverShip.y + 12 }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Ship className="h-5 w-5 text-slate-800" />
+              <span className="text-base font-bold text-slate-900">{hoverShip.mmsi}</span>
+            </div>
+            <span className="text-slate-400">×</span>
+          </div>
+
+          <div className="mb-3 text-xs text-slate-500">Vessel {hoverShip.mmsi}</div>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 shrink-0 text-slate-500" />
+              <span>{formatLatLng(hoverShip.lat, hoverShip.lng)}</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Navigation className="h-4 w-4 shrink-0 text-slate-500" />
+                <span>{formatSpeed(hoverShip.sog)}</span>
+              </div>
+              <span className="text-xs text-slate-400">COG</span>
+              <span className="font-medium tabular-nums">{formatCourse(hoverShip.cog)}</span>
+              <span className="text-xs text-slate-400">HDG</span>
+              <span className="font-medium tabular-nums">{formatCourse(hoverShip.heading)}</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Anchor className="h-4 w-4 shrink-0 text-slate-500" />
+                <span>{navStatusText(hoverShip.status)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 shrink-0 text-slate-500" />
+                <span>{formatUtcTime(hoverShip.timestamp)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Error Overlay ── */}
       {error && (

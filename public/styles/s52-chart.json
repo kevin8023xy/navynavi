@@ -15,7 +15,7 @@
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#67a3e0"
+        "background-color": "#4a7fb0"
       }
     },
     {
@@ -23,9 +23,34 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "depth_areas",
-      "filter": ["all", ["==", ["geometry-type"], "Polygon"], ["has", "DRVAL1"], [">", ["to-number", ["get", "DRVAL1"], 0], 30]],
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ],
+        [
+          "has",
+          "DRVAL1"
+        ],
+        [
+          ">",
+          [
+            "to-number",
+            [
+              "get",
+              "DRVAL1"
+            ],
+            0
+          ],
+          30
+        ]
+      ],
       "paint": {
-        "fill-color": "#5a90c6",
+        "fill-color": "#3d6fa0",
         "fill-opacity": 1
       }
     },
@@ -34,10 +59,47 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "depth_areas",
-      "filter": ["all", ["==", ["geometry-type"], "Polygon"], ["has", "DRVAL1"], ["<=", ["to-number", ["get", "DRVAL1"], 0], 30], [">", ["to-number", ["get", "DRVAL1"], 0], 10]],
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ],
+        [
+          "has",
+          "DRVAL1"
+        ],
+        [
+          "<=",
+          [
+            "to-number",
+            [
+              "get",
+              "DRVAL1"
+            ],
+            0
+          ],
+          30
+        ],
+        [
+          ">",
+          [
+            "to-number",
+            [
+              "get",
+              "DRVAL1"
+            ],
+            0
+          ],
+          10
+        ]
+      ],
       "paint": {
-        "fill-color": "#A8C6DB",
-        "fill-opacity": 0.7
+        "fill-color": "#5a90c6",
+        "fill-opacity": 0.85
       }
     },
     {
@@ -45,10 +107,35 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "depth_areas",
-      "filter": ["all", ["==", ["geometry-type"], "Polygon"], ["has", "DRVAL1"], ["<=", ["to-number", ["get", "DRVAL1"], 0], 10]],
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ],
+        [
+          "has",
+          "DRVAL1"
+        ],
+        [
+          "<=",
+          [
+            "to-number",
+            [
+              "get",
+              "DRVAL1"
+            ],
+            0
+          ],
+          10
+        ]
+      ],
       "paint": {
-        "fill-color": "#D6E8F2",
-        "fill-opacity": 0.7
+        "fill-color": "#7bb3db",
+        "fill-opacity": 0.8
       }
     },
     {
@@ -56,10 +143,47 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "depth_areas",
-      "filter": ["all", ["==", ["geometry-type"], "Polygon"]],
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
       "paint": {
-        "fill-color": "#A8C6DB",
-        "fill-opacity": 0.5
+        "fill-color": "#5a90c6",
+        "fill-opacity": 0.75
+      }
+    },
+    {
+      "id": "sand_areas",
+      "type": "fill",
+      "source": "navy-chart",
+      "source-layer": "depth_areas",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "Acronym"
+          ],
+          "SBDARE"
+        ]
+      ],
+      "paint": {
+        "fill-color": "#E8D4A8",
+        "fill-opacity": 1
       }
     },
     {
@@ -67,10 +191,16 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "sea_areas",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
-        "fill-color": "#68a4e1",
-        "fill-opacity": 0.6
+        "fill-color": "#5a90c6",
+        "fill-opacity": 1
       }
     },
     {
@@ -78,9 +208,15 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "land_areas",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
-        "fill-color": "#a6d8a6",
+        "fill-color": "#abddab",
         "fill-opacity": 1
       }
     },
@@ -89,7 +225,13 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "rivers_area",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "fill-color": "#67a3e0",
         "fill-opacity": 0.8
@@ -100,7 +242,13 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "fairways",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "fill-color": "#D6E8F2",
         "fill-opacity": 0.4
@@ -111,7 +259,13 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "anchorages",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "fill-color": "rgba(106, 142, 174, 0.25)",
         "fill-opacity": 0.5
@@ -122,11 +276,16 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "restricted_areas",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
-        "fill-color": "#F5D5D5",
-        "fill-opacity": 0.4,
-        "fill-pattern": ""
+        "fill-color": "#c8768c",
+        "fill-opacity": 0.6
       }
     },
     {
@@ -134,7 +293,13 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "berths",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "fill-color": "#D5E8D5",
         "fill-opacity": 0.6
@@ -145,7 +310,13 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "shoreline_construction",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "fill-color": "#B8D68C",
         "fill-opacity": 0.7
@@ -156,7 +327,13 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "bridges",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "fill-color": "#C8C8C8",
         "fill-opacity": 0.8
@@ -167,7 +344,13 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "admin_areas",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "fill-color": "#F0E8F5",
         "fill-opacity": 0.3
@@ -178,7 +361,13 @@
       "type": "fill",
       "source": "navy-chart",
       "source-layer": "meta_coverage",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "fill-color": "#F5F5F5",
         "fill-opacity": 0.2
@@ -189,9 +378,15 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "coastline",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
-        "line-color": "#5D4E37",
+        "line-color": "#ffffff",
         "line-width": 1.5
       }
     },
@@ -200,7 +395,13 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "depth_contours",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
         "line-color": "#4A6B8A",
         "line-width": 0.8
@@ -211,13 +412,31 @@
       "type": "symbol",
       "source": "navy-chart",
       "source-layer": "depth_contours",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "layout": {
         "symbol-placement": "line",
-        "text-field": ["concat", ["get", "VALDCO"], "m"],
-        "text-font": ["Noto Sans Regular"],
+        "text-field": [
+          "concat",
+          [
+            "get",
+            "VALDCO"
+          ],
+          "m"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
         "text-size": 10,
-        "text-offset": [0, 0.5]
+        "text-offset": [
+          0,
+          0.5
+        ]
       },
       "paint": {
         "text-color": "#4A6B8A",
@@ -230,11 +449,20 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "fairways_line",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
         "line-color": "#C050B8",
         "line-width": 1.2,
-        "line-dasharray": [5, 3]
+        "line-dasharray": [
+          5,
+          3
+        ]
       }
     },
     {
@@ -242,7 +470,13 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "rivers",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
         "line-color": "#6BA3C7",
         "line-width": 1.0
@@ -253,10 +487,16 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "roads",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
         "line-color": "#8B7355",
-        "line-width": 1.0
+        "line-width": 0.1
       }
     },
     {
@@ -264,11 +504,20 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "tunnels",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
         "line-color": "#666666",
         "line-width": 1.0,
-        "line-dasharray": [3, 2]
+        "line-dasharray": [
+          3,
+          2
+        ]
       }
     },
     {
@@ -276,7 +525,13 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "pipelines",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
         "line-color": "#8B4513",
         "line-width": 1.0
@@ -287,11 +542,20 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "fences",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
         "line-color": "#8B7355",
         "line-width": 0.8,
-        "line-dasharray": [2, 2]
+        "line-dasharray": [
+          2,
+          2
+        ]
       }
     },
     {
@@ -299,11 +563,20 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "radar_call",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
         "line-color": "#4A90D9",
         "line-width": 1.0,
-        "line-dasharray": [4, 4]
+        "line-dasharray": [
+          4,
+          4
+        ]
       }
     },
     {
@@ -311,10 +584,16 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "land_line",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
         "line-color": "#8B7355",
-        "line-width": 0.6
+        "line-width": 0.1
       }
     },
     {
@@ -322,17 +601,28 @@
       "type": "symbol",
       "source": "navy-chart",
       "source-layer": "soundings",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "layout": {
-        "text-field": ["get", "VALSOU"],
-        "text-font": ["Noto Sans Regular"],
+        "text-field": [
+          "get",
+          "VALSOU"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
         "text-size": 9,
         "text-anchor": "center"
       },
       "paint": {
         "text-color": "#1A5276",
         "text-halo-color": "#FFFFFF",
-        "text-halo-width": 1.5
+        "text-halo-width": 0.1
       }
     },
     {
@@ -340,12 +630,18 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "lights",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 4,
         "circle-color": "#FFD700",
         "circle-stroke-color": "#8B6914",
-        "circle-stroke-width": 1
+        "circle-stroke-width": 0.1
       }
     },
     {
@@ -353,19 +649,42 @@
       "type": "symbol",
       "source": "navy-chart",
       "source-layer": "lights",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "minzoom": 12,
       "layout": {
-        "text-field": ["concat", ["get", "LITCHR"], " ", ["get", "SIGPER"], "s"],
-        "text-font": ["Noto Sans Regular"],
+        "text-field": [
+          "concat",
+          [
+            "get",
+            "LITCHR"
+          ],
+          " ",
+          [
+            "get",
+            "SIGPER"
+          ],
+          "s"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
         "text-size": 9,
-        "text-offset": [0, 1.2],
+        "text-offset": [
+          0,
+          1.2
+        ],
         "text-anchor": "top"
       },
       "paint": {
         "text-color": "#37474F",
         "text-halo-color": "#FFFFFF",
-        "text-halo-width": 1
+        "text-halo-width": 0.1
       }
     },
     {
@@ -373,14 +692,25 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "buoys",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 0.5,
         "circle-color": [
           "match",
-          ["get", "BOYSHP"],
-          "1", "#F44336",
-          "2", "#4CAF50",
+          [
+            "get",
+            "BOYSHP"
+          ],
+          "1",
+          "#F44336",
+          "2",
+          "#4CAF50",
           "#F44336"
         ]
       }
@@ -390,7 +720,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "beacons",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 4,
         "circle-color": "#8B4513",
@@ -403,7 +739,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "topmarks",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 3,
         "circle-color": "#FF6347",
@@ -416,7 +758,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "obstructions",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 4,
         "circle-color": "#8B0000",
@@ -429,7 +777,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "wrecks",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 5,
         "circle-color": "#4A0000",
@@ -442,7 +796,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "landmarks",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 4,
         "circle-color": "#6B8E23",
@@ -455,7 +815,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "buildings",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 3,
         "circle-color": "#A0522D",
@@ -468,7 +834,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "pilots",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 4,
         "circle-color": "#4169E1",
@@ -481,7 +853,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "radar_stations",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 4,
         "circle-color": "#9370DB",
@@ -494,7 +872,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "route_beacons",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 4,
         "circle-color": "#20B2AA",
@@ -507,11 +891,26 @@
       "type": "symbol",
       "source": "navy-chart",
       "source-layer": "land_elevation",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "minzoom": 11,
       "layout": {
-        "text-field": ["concat", ["get", "ELEVAT"], "m"],
-        "text-font": ["Noto Sans Regular"],
+        "text-field": [
+          "concat",
+          [
+            "get",
+            "ELEVAT"
+          ],
+          "m"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
         "text-size": 9,
         "text-anchor": "center"
       },
@@ -526,7 +925,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "tidal_stations",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 4,
         "circle-color": "#008080",
@@ -539,7 +944,13 @@
       "type": "circle",
       "source": "navy-chart",
       "source-layer": "tidal_w_stations",
-      "filter": ["==", ["geometry-type"], "Point"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
       "paint": {
         "circle-radius": 4,
         "circle-color": "#008080",
@@ -548,27 +959,24 @@
       }
     },
     {
-      "id": "restricted_areas-outline",
-      "type": "line",
-      "source": "navy-chart",
-      "source-layer": "restricted_areas",
-      "filter": ["==", ["geometry-type"], "Polygon"],
-      "paint": {
-        "line-color": "#E53935",
-        "line-width": 1.5,
-        "line-dasharray": [4, 2]
-      }
-    },
-    {
       "id": "anchorages-outline",
       "type": "line",
       "source": "navy-chart",
       "source-layer": "anchorages",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "line-color": "#4A6B8A",
         "line-width": 1.0,
-        "line-dasharray": [2, 2]
+        "line-dasharray": [
+          2,
+          2
+        ]
       }
     },
     {
@@ -576,7 +984,13 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "berths",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "line-color": "#228B22",
         "line-width": 1.0
@@ -587,11 +1001,20 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "production_areas",
-      "filter": ["==", ["geometry-type"], "Polygon"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
       "paint": {
         "line-color": "#FF9800",
         "line-width": 1.0,
-        "line-dasharray": [3, 3]
+        "line-dasharray": [
+          3,
+          3
+        ]
       }
     },
     {
@@ -599,11 +1022,20 @@
       "type": "line",
       "source": "navy-chart",
       "source-layer": "magvar",
-      "filter": ["==", ["geometry-type"], "LineString"],
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
       "paint": {
         "line-color": "#4A6B8A",
         "line-width": 0.8,
-        "line-dasharray": [2, 2]
+        "line-dasharray": [
+          2,
+          2
+        ]
       }
     }
   ]
