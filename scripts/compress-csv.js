@@ -11,30 +11,28 @@ const CSV_PATH = path.resolve(
   projectRoot,
   'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv',
 );
-const OUT_DIR = path.resolve(projectRoot, 'public', 'data');
-const OUT_PATH = path.resolve(OUT_DIR, 'ais.csv.gz');
+const OUT_PATH = path.resolve(projectRoot, 'public', 'data', 'ais.csv.gz');
 
 function main() {
   if (!fs.existsSync(CSV_PATH)) {
-    throw new Error(`CSV not found: ${CSV_PATH}`);
+    console.warn(`[compress-csv] Source CSV not found at ${CSV_PATH}, skipping.`);
+    return;
   }
 
-  console.log('[compress-csv] Reading CSV from:', CSV_PATH);
+  console.log('[compress-csv] Reading CSV...');
   const raw = fs.readFileSync(CSV_PATH, 'utf-8');
-
-  console.log('[compress-csv] Compressing with gzip...');
   const compressed = gzip(raw);
 
-  if (!fs.existsSync(OUT_DIR)) {
-    fs.mkdirSync(OUT_DIR, { recursive: true });
-  }
+  fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
+  fs.writeFileSync(OUT_PATH, compressed);
 
-  fs.writeFileSync(OUT_PATH, Buffer.from(compressed));
-
-  const rawSize = raw.length / 1024 / 1024;
-  const compressedSize = compressed.length / 1024 / 1024;
+  const originalSize = Buffer.byteLength(raw, 'utf-8');
+  const compressedSize = compressed.byteLength;
   console.log(
-    `[compress-csv] Done. Raw: ${rawSize.toFixed(2)} MB, Compressed: ${compressedSize.toFixed(2)} MB → ${OUT_PATH}`,
+    `[compress-csv] Done. ${originalSize} bytes → ${compressedSize} bytes (${(
+      (compressedSize / originalSize) *
+      100
+    ).toFixed(1)}%) at ${OUT_PATH}`,
   );
 }
 

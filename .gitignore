@@ -1,29 +1,16 @@
-# Environment variables (may contain secrets)
-.env
-.env.*
-!.env.example
-
-# Captured network-request artifacts
-urls
-
-# Dependencies
-node_modules/
-
-# Build output
-dist/
-dist-ssr/
-
-# Generated data
-api/lib/records.json
-public/data/
-
-
 # Logs
 logs
 *.log
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
 
 # Editor directories and files
 .vscode/*
@@ -35,4 +22,18 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
+.env
+.env.*
+
+# Vercel
+.vercel
+
+# Temporary files
+*.tmp
+*.temp
+
+# Capture/network log files (may contain secrets)
+urls
 
