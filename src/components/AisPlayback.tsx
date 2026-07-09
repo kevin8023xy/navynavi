@@ -115,6 +115,7 @@ export default function AisPlayback({
   }, [isPlaying, speed, intervalSec, endUnix])
 
   const handleQueryData = async () => {
+    setIsPlaying(false)
     setIsLoading(true)
     setLoadProgress(5)
     onError?.(null)

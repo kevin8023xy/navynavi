@@ -616,13 +616,14 @@
         "text-font": [
           "Noto Sans Regular"
         ],
-        "text-size": 9,
-        "text-anchor": "center"
+        "text-size": 12,
+        "text-anchor": "center",
+        "text-allow-overlap": true
       },
       "paint": {
-        "text-color": "#1A5276",
-        "text-halo-color": "#FFFFFF",
-        "text-halo-width": 0.1
+        "text-color": "#ffffff",
+        "text-halo-color": "rgba(0, 0, 0, 0.5)",
+        "text-halo-width": 1
       }
     },
     {
@@ -638,10 +639,10 @@
         "Point"
       ],
       "paint": {
-        "circle-radius": 4,
-        "circle-color": "#FFD700",
+        "circle-radius": 3,
+        "circle-color": "#12df31",
         "circle-stroke-color": "#8B6914",
-        "circle-stroke-width": 0.1
+        "circle-stroke-width": 0
       }
     },
     {
@@ -755,7 +756,7 @@
     },
     {
       "id": "obstructions",
-      "type": "circle",
+      "type": "symbol",
       "source": "navy-chart",
       "source-layer": "obstructions",
       "filter": [
@@ -765,11 +766,19 @@
         ],
         "Point"
       ],
+      "layout": {
+        "text-field": "✕",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-allow-overlap": true,
+        "text-ignore-placement": true
+      },
       "paint": {
-        "circle-radius": 4,
-        "circle-color": "#8B0000",
-        "circle-stroke-color": "#000000",
-        "circle-stroke-width": 1
+        "text-color": "#8B0000",
+        "text-halo-color": "#FFFFFF",
+        "text-halo-width": 0.5
       }
     },
     {
@@ -785,10 +794,10 @@
         "Point"
       ],
       "paint": {
-        "circle-radius": 5,
+        "circle-radius": 2,
         "circle-color": "#4A0000",
         "circle-stroke-color": "#000000",
-        "circle-stroke-width": 1.5
+        "circle-stroke-width": 0
       }
     },
     {
@@ -804,10 +813,10 @@
         "Point"
       ],
       "paint": {
-        "circle-radius": 4,
+        "circle-radius": 3,
         "circle-color": "#6B8E23",
         "circle-stroke-color": "#000000",
-        "circle-stroke-width": 1
+        "circle-stroke-width": 0
       }
     },
     {
@@ -842,10 +851,10 @@
         "Point"
       ],
       "paint": {
-        "circle-radius": 4,
+        "circle-radius": 3,
         "circle-color": "#4169E1",
         "circle-stroke-color": "#000000",
-        "circle-stroke-width": 1
+        "circle-stroke-width": 0
       }
     },
     {
@@ -861,7 +870,7 @@
         "Point"
       ],
       "paint": {
-        "circle-radius": 4,
+        "circle-radius": 3,
         "circle-color": "#9370DB",
         "circle-stroke-color": "#000000",
         "circle-stroke-width": 1
@@ -880,10 +889,10 @@
         "Point"
       ],
       "paint": {
-        "circle-radius": 4,
+        "circle-radius": 3,
         "circle-color": "#20B2AA",
         "circle-stroke-color": "#000000",
-        "circle-stroke-width": 1
+        "circle-stroke-width": 0
       }
     },
     {

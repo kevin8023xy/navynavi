@@ -118,7 +118,7 @@ async function loadCsv(progress?: (percent: number) => void): Promise<void> {
   await clearRecords(db);
 
   const records: AisRecord[] = [];
-  const estimatedTotal = 210000;
+  const estimatedTotal = 535276;
 
   await new Promise<void>((resolve, reject) => {
     Papa.parse(csvText, {

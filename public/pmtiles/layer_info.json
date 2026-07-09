@@ -172,16 +172,7 @@
       "BOYLAT",
       "BOYSPP"
     ],
-    "feature_count": 68
-  },
-  "beacons": {
-    "description": "立标",
-    "s52_color": "BCNSP",
-    "geometry_type": "P",
-    "source_codes": [
-      "BCNSPP"
-    ],
-    "feature_count": 37
+    "feature_count": 67
   },
   "lights": {
     "description": "灯塔/灯标",
@@ -192,15 +183,6 @@
     ],
     "feature_count": 115
   },
-  "topmarks": {
-    "description": "顶标",
-    "s52_color": "TOPMA",
-    "geometry_type": "P",
-    "source_codes": [
-      "TOPMAR"
-    ],
-    "feature_count": 78
-  },
   "radar_stations": {
     "description": "雷达站/无线电指向标",
     "s52_color": "RADAR",
@@ -210,15 +192,6 @@
       "RDOSTA"
     ],
     "feature_count": 1
-  },
-  "buildings": {
-    "description": "建筑物",
-    "s52_color": "BUISG",
-    "geometry_type": "P",
-    "source_codes": [
-      "BUISGL"
-    ],
-    "feature_count": 6
   },
   "landmarks": {
     "description": "地标",
@@ -319,15 +292,6 @@
       "MAGVAR"
     ],
     "feature_count": 4
-  },
-  "tidal_streams": {
-    "description": "潮汐流",
-    "s52_color": "TS",
-    "geometry_type": "R",
-    "source_codes": [
-      "TS"
-    ],
-    "feature_count": 19
   },
   "tidal_w stations": {
     "description": "潮汐观测站",

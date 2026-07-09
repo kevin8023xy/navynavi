@@ -225,6 +225,35 @@ export default function Console() {
           console.warn('[Map] Failed to load S-52 style:', e)
         }
 
+        // 添加 S-57 水深点标签（白色 12px，来自 .000 原始文件）
+        try {
+          m.addSource('soundings', {
+            type: 'geojson',
+            data: '/data/soundings.json',
+          })
+          m.addLayer({
+            id: 'soundings-label',
+            type: 'symbol',
+            source: 'soundings',
+            minzoom: 10,
+            layout: {
+              'text-field': ['get', 'VALSOU'],
+              'text-font': ['Noto Sans Regular'],
+              'text-size': 6,
+              'text-anchor': 'center',
+              'text-allow-overlap': true,
+            },
+            paint: {
+              'text-color': 'rgba(255,255,255,0.3)',
+              'text-halo-color': 'rgba(0, 0, 0, 0.5)',
+              'text-halo-width': 0,
+            },
+          })
+          console.log('[Map] Soundings label added')
+        } catch (e) {
+          console.warn('[Map] Failed to add soundings:', e)
+        }
+
         // 加载船舶图标（用 Image 对象更可靠）
         const img = new Image()
         img.onload = () => {
@@ -461,7 +490,7 @@ export default function Console() {
       'obstructions', 'wrecks', 'landmarks', 'buildings', 'pilots',
       'radar_stations', 'route_beacons', 'land_elevation', 'tidal_stations',
       'tidal_w_stations', 'restricted_areas-outline', 'anchorages-outline',
-      'berths-outline', 'production_areas-outline', 'magvar',
+      'berths-outline', 'production_areas-outline', 'magvar', 'soundings-label',
     ]
     chartLayerIds.forEach((id) => {
       if (map.current!.getLayer(id)) {
