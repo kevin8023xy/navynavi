@@ -1,4 +1,4 @@
-# ==============================================
+﻿# ==============================================
 #  NavyNavi 自动提交 & 部署脚本
 #  用法:
 #    .\deploy.ps1                    # 使用自动生成的 commit message
@@ -35,9 +35,9 @@ Write-Host ""
 # ---------- Step 2: 可选构建测试 ----------
 if (-not $SkipBuild) {
     Write-Host "[2/5] 构建测试 (vite build)..." -ForegroundColor Yellow
-    Push-Location "$PSScriptRoot\navi-navy"
+    Push-Location $PSScriptRoot
     try {
-        npx vite build 2>&1 | Out-Null
+        npm run build 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
             Write-Host "  构建失败！请修复错误后重试。" -ForegroundColor Red
             Pop-Location
@@ -67,7 +67,7 @@ else {
 Write-Host ""
 
 # ---------- Step 4: Git add + commit ----------
-Write-Host "[4/5] 执行 git add & commit..." -ForegroundColor Yellow
+Write-Host '[4/5] 执行 git add & commit...' -ForegroundColor Yellow
 git add -A
 git commit -m $Message
 Write-Host "  提交成功。" -ForegroundColor Green
