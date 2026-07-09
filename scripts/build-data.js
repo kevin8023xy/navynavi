@@ -8,7 +8,8 @@ const projectRoot = path.resolve(__dirname, '..');
 
 const CSV_PATH = path.resolve(
   projectRoot,
-  'ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv',
+  'output',
+  'merged_feichang_ships_2021-10-01_2021-10-31.csv',
 );
 const JSON_PATH = path.resolve(projectRoot, 'api', 'lib', 'record1.json');
 
@@ -31,14 +32,14 @@ function main() {
 
   const headers = lines[0].split(',').map((h) => h.trim());
   const colIdx = {
-    mmsi: headers.indexOf('MMSI'),
-    lat: headers.indexOf('Latitude'),
-    lng: headers.indexOf('Longitude'),
-    sog: headers.indexOf('Speed Over Ground (SOG)'),
-    cog: headers.indexOf('Course Over Ground (COG)'),
-    heading: headers.indexOf('True Heading'),
-    status: headers.indexOf('Navigational Status'),
-    tsUnix: headers.indexOf('Timestamp (Unix)'),
+    mmsi: headers.indexOf('mmsi'),
+    lat: headers.indexOf('lat'),
+    lng: headers.indexOf('lon'),
+    sog: headers.indexOf('sog'),
+    cog: headers.indexOf('cog'),
+    heading: headers.indexOf('heading'),
+    status: headers.indexOf('status'),
+    tsMs: headers.indexOf('timestamp_ms'),
   };
 
   const records = [];
@@ -48,7 +49,7 @@ function main() {
     if (!line.trim()) continue;
 
     const cols = line.split(',');
-    const ts = parseInt(cols[colIdx.tsUnix], 10);
+    const ts = parseInt(cols[colIdx.tsMs], 10);
     if (isNaN(ts)) continue;
 
     records.push({
@@ -63,7 +64,7 @@ function main() {
       status: cols[colIdx.status]
         ? parseInt(cols[colIdx.status], 10)
         : null,
-      timestamp: ts,
+      timestamp: Math.floor(ts / 1000),
     });
   }
 

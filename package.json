@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "prebuild": "node scripts/build-data.js && node scripts/compress-csv.js",
+    "prebuild": "node scripts/build-data.js && node scripts/extract10k.cjs && node scripts/compress-csv.js",
     "preview": "vite preview"
   },
   "dependencies": {
