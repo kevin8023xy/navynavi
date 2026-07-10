@@ -37,10 +37,10 @@ if (-not $SkipBuild) {
     Write-Host "[2/5] 构建测试 (vite build)..." -ForegroundColor Yellow
     Push-Location $PSScriptRoot
     try {
-        npm run build 2>&1 | Out-Null
+        $buildOutput = npm run build 2>&1
         if ($LASTEXITCODE -ne 0) {
+            Write-Host $buildOutput
             Write-Host "  构建失败！请修复错误后重试。" -ForegroundColor Red
-            Pop-Location
             exit 1
         }
         Write-Host "  构建通过。" -ForegroundColor Green

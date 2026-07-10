@@ -38,3 +38,8 @@ sourcedata
 # Capture/network log files (may contain secrets)
 urls
 
+# Large generated data files (keep compressed CSV for Vercel build)
+output/*.parquet
+output/*.csv
+
+

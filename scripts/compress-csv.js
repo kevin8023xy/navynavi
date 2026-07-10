@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
 import { fileURLToPath } from 'url';
 import { gzip } from 'pako';
 
@@ -10,7 +11,7 @@ const projectRoot = path.resolve(__dirname, '..');
 const CSV_PATH = path.resolve(
   projectRoot,
   'output',
-  'merged_feichang_ships_2021-10-01_2021-10-31.csv',
+  'merged_feichang_ships_2021-10-01_2021-11-30.csv.gz',
 );
 const OUT_PATH = path.resolve(projectRoot, 'public', 'data', 'ais.csv.gz');
 
@@ -48,8 +49,11 @@ function main() {
   }
 
   console.log('[compress-csv] Reading CSV...');
-  const raw = fs.readFileSync(CSV_PATH, 'utf-8');
-  const lines = raw.trim().split(/\r?\n/);
+  const raw = fs.readFileSync(CSV_PATH);
+  const csvText = CSV_PATH.endsWith('.gz')
+    ? zlib.gunzipSync(raw).toString('utf-8')
+    : raw.toString('utf-8');
+  const lines = csvText.trim().split(/\r?\n/);
   if (lines.length === 0) {
     console.warn('[compress-csv] Source CSV is empty.');
     return;

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -9,14 +10,14 @@ const projectRoot = path.resolve(__dirname, '..');
 const CSV_PATH = path.resolve(
   projectRoot,
   'output',
-  'merged_feichang_ships_2021-10-01_2021-10-31.csv',
+  'merged_feichang_ships_2021-10-01_2021-11-30.csv.gz',
 );
 const JSON_PATH = path.resolve(projectRoot, 'api', 'lib', 'record1.json');
 
 function getLimit() {
   const env = process.env.RECORD_LIMIT;
   if (env === 'all') return Infinity;
-  if (!env) return Infinity;
+  if (!env) return 100000;
   const n = parseInt(env, 10);
   return isNaN(n) ? 100 : n;
 }
@@ -25,8 +26,11 @@ function main() {
   const limit = getLimit();
   console.log('[build-data] Reading CSV from:', CSV_PATH);
   console.log(`[build-data] RECORD_LIMIT=${limit === Infinity ? 'all' : limit}`);
-  const raw = fs.readFileSync(CSV_PATH, 'utf-8');
-  const lines = raw.trim().split(/\r?\n/);
+  const raw = fs.readFileSync(CSV_PATH);
+  const csvText = CSV_PATH.endsWith('.gz')
+    ? zlib.gunzipSync(raw).toString('utf-8')
+    : raw.toString('utf-8');
+  const lines = csvText.trim().split(/\r?\n/);
 
   if (lines.length === 0) throw new Error('CSV is empty');
 
