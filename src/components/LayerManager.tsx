@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Search, Layers } from 'lucide-react'
 import { useLayerSearch } from '../hooks/useLayerSearch'
+import StyleSelector from './StyleSelector'
 
 export interface LayerStyle {
   color: string
@@ -31,7 +32,12 @@ export default function LayerManager({
   const [activeLayers, setActiveLayers] = useState<MapLayer[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [styleSelector, setStyleSelector] = useState<{ layerId: string; isEdit: boolean } | null>(null)
+  const [pendingLayer, setPendingLayer] = useState<MapLayer | null>(null)
+  const [highlightId, setHighlightId] = useState<string | null>(null)
   const searchWorkerRef = useRef<Worker | null>(null)
+  const activeScrollRef = useRef<HTMLDivElement>(null)
+  const libraryScrollRef = useRef<HTMLDivElement>(null)
   const { searchResults } = useLayerSearch(searchQuery, allLayers, searchWorkerRef)
 
   // 初始化 Worker
@@ -113,138 +119,268 @@ export default function LayerManager({
     localStorage.setItem(STORAGE_KEY, JSON.stringify(ids))
   }, [])
 
-  // 切换图层可见性
-  const toggleLayer = useCallback(
-    (layerId: string, shouldEnable: boolean) => {
-      const layer = allLayers.find((l) => l.id === layerId)
-      if (!layer) return
+  // 勾选图层时显示样式选择器
+  const handleLibraryCheck = useCallback((layer: MapLayer) => {
+    setPendingLayer(layer)
+    setStyleSelector({ layerId: layer.id, isEdit: false })
+  }, [])
 
-      let newActiveLayers: MapLayer[]
+  // 编辑已勾选图层的样式
+  const handleEditStyle = useCallback((layer: MapLayer) => {
+    setPendingLayer(layer)
+    setStyleSelector({ layerId: layer.id, isEdit: true })
+  }, [])
 
-      if (shouldEnable) {
-        // 添加到 Active
+  // 样式选择完成
+  const handleStyleConfirm = useCallback(
+    (style: LayerStyle) => {
+      if (!pendingLayer) return
+
+      if (styleSelector?.isEdit) {
+        // 编辑模式：更新现有图层
+        const newActiveLayers = activeLayers.map((l) =>
+          l.id === pendingLayer.id ? { ...l, style } : l
+        )
+        setActiveLayers(newActiveLayers)
+        saveActiveLayers(newActiveLayers)
+        onLayersChange?.(newActiveLayers)
+      } else {
+        // 添加模式：添加新图层
         const newLayer = {
-          ...layer,
+          ...pendingLayer,
           visible: true,
+          style,
           zIndex: activeLayers.length,
         }
-        newActiveLayers = [...activeLayers, newLayer]
-      } else {
-        // 从 Active 移除
-        newActiveLayers = activeLayers.filter((l) => l.id !== layerId)
+        const newActiveLayers = [...activeLayers, newLayer]
+        setActiveLayers(newActiveLayers)
+        saveActiveLayers(newActiveLayers)
+        onLayersChange?.(newActiveLayers)
+        setHighlightId(newLayer.id)
+        setTimeout(() => setHighlightId(null), 1500)
       }
 
+      setStyleSelector(null)
+      setPendingLayer(null)
+    },
+    [pendingLayer, styleSelector, activeLayers, saveActiveLayers, onLayersChange]
+  )
+
+  // 移除图层
+  const removeLayer = useCallback(
+    (layerId: string) => {
+      const newActiveLayers = activeLayers.filter((l) => l.id !== layerId)
       setActiveLayers(newActiveLayers)
       saveActiveLayers(newActiveLayers)
       onLayersChange?.(newActiveLayers)
     },
-    [allLayers, activeLayers, onLayersChange, saveActiveLayers]
+    [activeLayers, saveActiveLayers, onLayersChange]
   )
 
-  const libraryLayers = allLayers.filter(
-    (layer) => !activeLayers.find((al) => al.id === layer.id)
-  )
 
-  const displayLayers = searchQuery.trim() ? searchResults : libraryLayers
+  // 合并搜索结果（包括活跃和库）
+  const getSearchResults = useCallback(() => {
+    if (!searchQuery.trim()) return { active: [], library: [] }
+
+    return {
+      active: activeLayers.filter((layer) =>
+        searchResults.some((r) => r.id === layer.id)
+      ),
+      library: searchResults.filter(
+        (layer) => !activeLayers.some((a) => a.id === layer.id)
+      ),
+    }
+  }, [searchQuery, activeLayers, searchResults])
+
+  const { active: searchActiveResults, library: searchLibraryResults } = getSearchResults()
+  const isSearching = searchQuery.trim().length > 0
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-1/5 bg-white/90 backdrop-blur-md border-l border-slate-200 flex flex-col z-40">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-200 flex-shrink-0">
-        <div className="flex items-center gap-2 mb-3">
-          <Layers className="w-4 h-4 text-slate-600" />
-          <h2 className="font-semibold text-slate-800 text-sm">Layers</h2>
+    <>
+      <div className="fixed right-0 top-9 h-[calc(100vh-36px)] w-1/5 bg-white/90 backdrop-blur-md border-l border-slate-200 flex flex-col z-40">
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-slate-200 flex-shrink-0">
+          <div className="flex items-center gap-2 mb-3">
+            <Layers className="w-4 h-4 text-slate-600" />
+            <h2 className="font-semibold text-slate-800 text-sm">Layers</h2>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-7 pr-3 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-7 pr-3 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
-          />
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-4 p-3">
-        {/* Active Layers */}
-        <div className="flex-1 min-h-0 flex flex-col">
-          <h3 className="text-xs font-semibold text-slate-600 mb-2">
-            Active ({activeLayers.length})
-          </h3>
-          <div className="flex-1 overflow-y-auto space-y-1">
-            {activeLayers.length === 0 ? (
-              <p className="text-xs text-slate-400">No active layers</p>
-            ) : (
-              activeLayers.map((layer) => (
-                <div
-                  key={layer.id}
-                  className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-blue-50 transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={true}
-                    onChange={() => toggleLayer(layer.id, false)}
-                    className="w-3 h-3 cursor-pointer flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-slate-700 truncate">
-                      {layer.name}
-                    </p>
-                  </div>
+        {/* Content */}
+        <div className="flex-1 overflow-hidden flex flex-col gap-4 p-3">
+          {/* Active Layers */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            <h3 className="text-xs font-semibold text-slate-600 mb-2">
+              Active ({activeLayers.length})
+            </h3>
+            <div
+              ref={activeScrollRef}
+              className="flex-1 overflow-y-auto space-y-1"
+            >
+              {activeLayers.length === 0 ? (
+                <p className="text-xs text-slate-400">No active layers</p>
+              ) : (
+                activeLayers.map((layer) => (
                   <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: layer.style.color }}
-                  />
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Library */}
-        <div className="flex-1 min-h-0 flex flex-col border-t border-slate-200 pt-3">
-          <h3 className="text-xs font-semibold text-slate-600 mb-2">
-            Library ({displayLayers.length})
-          </h3>
-          <div className="flex-1 overflow-y-auto space-y-1">
-            {loading ? (
-              <p className="text-xs text-slate-400">Loading...</p>
-            ) : displayLayers.length === 0 ? (
-              <p className="text-xs text-slate-400">
-                {searchQuery.trim() ? 'No results' : 'All active'}
-              </p>
-            ) : (
-              displayLayers.map((layer) => (
-                <div
-                  key={layer.id}
-                  className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-blue-50 transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={false}
-                    onChange={() => toggleLayer(layer.id, true)}
-                    className="w-3 h-3 cursor-pointer flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-slate-700 truncate">
-                      {layer.name}
-                    </p>
-                    <p className="text-xs text-slate-500 truncate">
-                      {layer.mmsi}
-                    </p>
+                    key={layer.id}
+                    id={`layer-${layer.id}`}
+                    className={`group flex items-center gap-2 px-2 py-1.5 rounded transition-colors ${
+                      highlightId === layer.id
+                        ? 'bg-yellow-100 ring-1 ring-yellow-400'
+                        : 'hover:bg-blue-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={true}
+                      onChange={() => removeLayer(layer.id)}
+                      className="w-3 h-3 cursor-pointer flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-slate-700 truncate">
+                        {layer.name}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleEditStyle(layer)}
+                      className="w-3 h-3 rounded-full flex-shrink-0 hover:ring-2 hover:ring-blue-400"
+                      style={{ backgroundColor: layer.style.color }}
+                      title="Edit style"
+                    />
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Library */}
+          <div className="flex-1 min-h-0 flex flex-col border-t border-slate-200 pt-3">
+            <h3 className="text-xs font-semibold text-slate-600 mb-2">
+              {isSearching ? `Search Results` : `Library`} (
+              {isSearching ? searchLibraryResults.length : allLayers.length - activeLayers.length})
+            </h3>
+            <div
+              ref={libraryScrollRef}
+              className="flex-1 overflow-y-auto space-y-1"
+            >
+              {loading ? (
+                <p className="text-xs text-slate-400">Loading...</p>
+              ) : isSearching ? (
+                <>
+                  {searchActiveResults.length > 0 && (
+                    <>
+                      <p className="text-xs text-slate-500 px-2 py-1">In Active</p>
+                      {searchActiveResults.map((layer) => (
+                        <div
+                          key={`search-active-${layer.id}`}
+                          id={`layer-${layer.id}`}
+                          className={`group flex items-center gap-2 px-2 py-1.5 rounded transition-colors text-xs text-slate-500 ${
+                            highlightId === layer.id
+                              ? 'bg-yellow-100 ring-1 ring-yellow-400'
+                              : 'hover:bg-blue-50'
+                          }`}
+                        >
+                          ✓ {layer.name}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {searchLibraryResults.length > 0 && (
+                    <>
+                      {searchActiveResults.length > 0 && <div className="h-px bg-slate-200" />}
+                      <p className="text-xs text-slate-500 px-2 py-1">Available</p>
+                      {searchLibraryResults.map((layer) => (
+                        <div
+                          key={`search-lib-${layer.id}`}
+                          id={`layer-${layer.id}`}
+                          className={`group flex items-center gap-2 px-2 py-1.5 rounded transition-colors ${
+                            highlightId === layer.id
+                              ? 'bg-yellow-100 ring-1 ring-yellow-400'
+                              : 'hover:bg-blue-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            onChange={() => handleLibraryCheck(layer)}
+                            className="w-3 h-3 cursor-pointer flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-slate-700 truncate">
+                              {layer.name}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {searchActiveResults.length === 0 && searchLibraryResults.length === 0 && (
+                    <p className="text-xs text-slate-400">No results</p>
+                  )}
+                </>
+              ) : (
+                (allLayers.filter((l) => !activeLayers.find((a) => a.id === l.id)).length === 0 ? (
+                  <p className="text-xs text-slate-400">All active</p>
+                ) : (
+                  allLayers
+                    .filter((l) => !activeLayers.find((a) => a.id === l.id))
+                    .map((layer) => (
+                      <div
+                        key={layer.id}
+                        id={`layer-${layer.id}`}
+                        className={`group flex items-center gap-2 px-2 py-1.5 rounded transition-colors ${
+                          highlightId === layer.id
+                            ? 'bg-yellow-100 ring-1 ring-yellow-400'
+                            : 'hover:bg-blue-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          onChange={() => handleLibraryCheck(layer)}
+                          className="w-3 h-3 cursor-pointer flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-slate-700 truncate">
+                            {layer.name}
+                          </p>
+                          <p className="text-xs text-slate-500 truncate">
+                            {layer.mmsi}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Style Selector Modal */}
+      {styleSelector && (
+        <StyleSelector
+          initialStyle={pendingLayer?.style}
+          onStyleSelect={handleStyleConfirm}
+          onClose={() => {
+            setStyleSelector(null)
+            setPendingLayer(null)
+          }}
+        />
+      )}
+    </>
   )
 }
 
