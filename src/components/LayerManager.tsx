@@ -21,12 +21,14 @@ export interface MapLayer {
 
 interface LayerManagerProps {
   onLayersChange?: (layers: MapLayer[]) => void
+  onLayerFocus?: (layerId: string | null) => void
 }
 
 const STORAGE_KEY = 'layerManager_activeLayers'
 
 export default function LayerManager({
   onLayersChange,
+  onLayerFocus,
 }: LayerManagerProps) {
   const [allLayers, setAllLayers] = useState<MapLayer[]>([])
   const [activeLayers, setActiveLayers] = useState<MapLayer[]>([])
@@ -157,6 +159,7 @@ export default function LayerManager({
         saveActiveLayers(newActiveLayers)
         onLayersChange?.(newActiveLayers)
         setHighlightId(newLayer.id)
+        onLayerFocus?.(newLayer.id)
         setTimeout(() => setHighlightId(null), 1500)
       }
 
@@ -236,11 +239,12 @@ export default function LayerManager({
                   <div
                     key={layer.id}
                     id={`layer-${layer.id}`}
-                    className={`group flex items-center gap-2 px-2 py-1.5 rounded transition-colors ${
+                    className={`group flex items-center gap-2 px-2 py-1.5 rounded transition-colors cursor-pointer ${
                       highlightId === layer.id
                         ? 'bg-yellow-100 ring-1 ring-yellow-400'
                         : 'hover:bg-blue-50'
                     }`}
+                    onClick={() => onLayerFocus?.(layer.id)}
                   >
                     <input
                       type="checkbox"

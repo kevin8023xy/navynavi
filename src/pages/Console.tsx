@@ -107,7 +107,9 @@ export default function Console() {
   const [vesselTrajectoryOpen, setVesselTrajectoryOpen] = useState(false)
   const trajectorySourceRef = useRef<string | null>(null)
   const trajectoryLayersRef = useRef<string[]>([])
+  const trajectoryCoordinatesRef = useRef<Map<number, [number, number][]>>(new Map())
   const [activeLayers, setActiveLayers] = useState<MapLayer[]>([])
+  const [focusedLayerId, setFocusedLayerId] = useState<string | null>(null)
 
   // NavyNavi app menu state
   const [navyMenuOpen, setNavyMenuOpen] = useState(false)
@@ -169,6 +171,8 @@ export default function Console() {
       }
     }
 
+    trajectoryCoordinatesRef.current.clear()
+
     if (vessels.length === 0) return
 
     try {
@@ -184,6 +188,8 @@ export default function Console() {
           const coordinates = data.data
             .sort((a: any, b: any) => a.timestamp - b.timestamp)
             .map((record: any) => [record.lng, record.lat])
+
+          trajectoryCoordinatesRef.current.set(vessel.mmsi, coordinates)
 
           features.push({
             type: 'Feature',
@@ -249,6 +255,80 @@ export default function Console() {
 
     updateMapTrajectories(vessels, map.current)
   }, [activeLayers, updateMapTrajectories])
+
+  // ── Handle layer focus (highlight and fly to) ──
+  useEffect(() => {
+    if (!map.current || !focusedLayerId) return
+
+    const layer = activeLayers.find((l) => l.id === focusedLayerId)
+    if (!layer) return
+
+    // 获取该图层的坐标
+    const coordinates = trajectoryCoordinatesRef.current.get(layer.mmsi)
+    if (!coordinates || coordinates.length === 0) return
+
+    // 计算边界框
+    const bounds = coordinates.reduce(
+      (acc, [lng, lat]) => {
+        return {
+          minLng: Math.min(acc.minLng, lng),
+          minLat: Math.min(acc.minLat, lat),
+          maxLng: Math.max(acc.maxLng, lng),
+          maxLat: Math.max(acc.maxLat, lat),
+        }
+      },
+      { minLng: coordinates[0][0], minLat: coordinates[0][1], maxLng: coordinates[0][0], maxLat: coordinates[0][1] }
+    )
+
+    // 飞到该区域并添加一些 padding
+    map.current.fitBounds(
+      [
+        [bounds.minLng, bounds.minLat],
+        [bounds.maxLng, bounds.maxLat],
+      ],
+      { padding: 100, duration: 1000 }
+    )
+
+    // 高亮该轨迹线条（增加线宽和不透明度）
+    trajectoryLayersRef.current.forEach((layerName) => {
+      map.current!.setPaintProperty(
+        layerName,
+        'line-width',
+        [
+          'case',
+          ['==', ['get', 'mmsi'], layer.mmsi],
+          6, // 高亮时的宽度
+          2, // 正常宽度
+        ]
+      )
+      map.current!.setPaintProperty(
+        layerName,
+        'line-opacity',
+        [
+          'case',
+          ['==', ['get', 'mmsi'], layer.mmsi],
+          1.0, // 高亮时的透明度
+          0.8, // 正常透明度
+        ]
+      )
+    })
+
+    // 3 秒后恢复高亮
+    const timer = setTimeout(() => {
+      if (!map.current) return
+      trajectoryLayersRef.current.forEach((layerName) => {
+        try {
+          map.current!.setPaintProperty(layerName, 'line-width', 2)
+          map.current!.setPaintProperty(layerName, 'line-opacity', 0.8)
+        } catch (e) {
+          // Layer might not exist
+        }
+      })
+      setFocusedLayerId(null)
+    }, 3000)
+
+    return () => clearTimeout(timer)
+  }, [focusedLayerId, activeLayers])
 
   // ── Initialize map with CARTO basemap + Mapbox vector overlay + S-57 ENC chart ──
   useEffect(() => {
@@ -894,6 +974,7 @@ export default function Console() {
       {/* ── Layer Manager Sidebar ── */}
       <LayerManager
         onLayersChange={(layers) => setActiveLayers(layers)}
+        onLayerFocus={(layerId) => setFocusedLayerId(layerId)}
       />
 
       {/* ── About NavyNavi Modal ── */}
