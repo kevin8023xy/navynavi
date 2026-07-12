@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Layers, Ship, MapPin, Navigation, Anchor, Clock } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
@@ -6,10 +6,18 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import compassIcon from '../assets/compass.png'
 import logo from '../assets/logo.webp'
 import AisPlayback from '../components/AisPlayback'
+import DataManager from '../components/DataManager'
+import VesselTrajectory from '../components/VesselTrajectory'
+import LayerManager from '../components/LayerManager'
+import type { MapLayer } from '../components/LayerManager'
 
 const TOOLS_MENU = [
   { label: 'AIS Codec', submenu: ['Encoder', 'Decoder'] },
   { label: 'AIS Playback' },
+  { label: 'Vessel Trajectory' },
+  { label: 'Layer Manager' },
+  { separator: true },
+  { label: 'Data Manager' },
   { separator: true },
   { label: 'Broadcasting' },
   { label: 'Ship Simulation' },
@@ -95,6 +103,11 @@ export default function Console() {
   const [error, setError] = useState<string | null>(null)
   const [chartVisible, setChartVisible] = useState(true)
   const [aisPlaybackOpen, setAisPlaybackOpen] = useState(false)
+  const [dataManagerOpen, setDataManagerOpen] = useState(false)
+  const [vesselTrajectoryOpen, setVesselTrajectoryOpen] = useState(false)
+  const trajectorySourceRef = useRef<string | null>(null)
+  const trajectoryLayersRef = useRef<string[]>([])
+  const [activeLayers, setActiveLayers] = useState<MapLayer[]>([])
 
   // NavyNavi app menu state
   const [navyMenuOpen, setNavyMenuOpen] = useState(false)
@@ -132,6 +145,110 @@ export default function Console() {
   const [cursorCoords, setCursorCoords] = useState<{ lng: number; lat: number } | null>(null)
   const [hoverShip, setHoverShip] = useState<HoverShip | null>(null)
   const shipListenersAdded = useRef(false)
+
+  // ── Update map trajectories ──
+  const updateMapTrajectories = useCallback(async (vessels: Array<{ mmsi: number; color: string; dashed: boolean }>, mapRef: maplibregl.Map | null) => {
+    if (!mapRef) return
+
+    // 移除旧的轨迹图层
+    trajectoryLayersRef.current.forEach((layerName) => {
+      try {
+        mapRef.removeLayer(layerName)
+      } catch (e) {
+        // Layer might not exist
+      }
+    })
+    trajectoryLayersRef.current = []
+
+    // 移除旧的数据源
+    if (trajectorySourceRef.current) {
+      try {
+        mapRef.removeSource(trajectorySourceRef.current)
+      } catch (e) {
+        // Source might not exist
+      }
+    }
+
+    if (vessels.length === 0) return
+
+    try {
+      // 获取每条船的轨迹数据
+      const features: any[] = []
+
+      for (const vessel of vessels) {
+        const response = await fetch(`/api/tracks?mmsi=${vessel.mmsi}&page_size=100000`)
+        const data = await response.json()
+
+        if (data.data && data.data.length > 0) {
+          // 创建线条坐标数组，应用线性插值使其丝滑
+          const coordinates = data.data
+            .sort((a: any, b: any) => a.timestamp - b.timestamp)
+            .map((record: any) => [record.lng, record.lat])
+
+          features.push({
+            type: 'Feature',
+            properties: { mmsi: vessel.mmsi, color: vessel.color, dashed: vessel.dashed },
+            geometry: {
+              type: 'LineString',
+              coordinates,
+            },
+          })
+        }
+      }
+
+      if (features.length === 0) return
+
+      // 添加数据源
+      const sourceName = `trajectory-source-${Date.now()}`
+      trajectorySourceRef.current = sourceName
+
+      mapRef.addSource(sourceName, {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features,
+        },
+      })
+
+      // 添加线条图层（为每条线使用不同颜色）
+      features.forEach((feature, idx) => {
+        const layerName = `trajectory-layer-${sourceName}-${idx}`
+        trajectoryLayersRef.current.push(layerName)
+
+        mapRef.addLayer({
+          id: layerName,
+          type: 'line',
+          source: sourceName,
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': feature.properties.color,
+            'line-width': 2,
+            'line-opacity': 0.8,
+            'line-dasharray': feature.properties.dashed ? [5, 3] : [1, 0],
+          },
+          filter: ['==', ['get', 'mmsi'], feature.properties.mmsi],
+        })
+      })
+    } catch (err) {
+      console.error('[Trajectory] Error:', err)
+    }
+  }, [])
+
+  // ── Watch active layers and update map trajectories ──
+  useEffect(() => {
+    if (!map.current) return
+
+    const vessels = activeLayers.map((layer) => ({
+      mmsi: layer.mmsi,
+      color: layer.style.color,
+      dashed: layer.style.dashArray !== null,
+    }))
+
+    updateMapTrajectories(vessels, map.current)
+  }, [activeLayers, updateMapTrajectories])
 
   // ── Initialize map with CARTO basemap + Mapbox vector overlay + S-57 ENC chart ──
   useEffect(() => {
@@ -660,6 +777,8 @@ export default function Console() {
                       onClick={() => {
                         setToolsOpen(false)
                         if (item.label === 'AIS Playback') setAisPlaybackOpen(true)
+                        if (item.label === 'Data Manager') setDataManagerOpen(true)
+                        if (item.label === 'Vessel Trajectory') setVesselTrajectoryOpen(true)
                       }}
                       className="flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
                     >
@@ -755,8 +874,27 @@ export default function Console() {
           onPlaybackTimeChange={setPlaybackTime}
           onIntervalChange={setIntervalSec}
           onError={setError}
+          onClose={() => setAisPlaybackOpen(false)}
         />
       )}
+
+      {/* ── Data Manager Modal ── */}
+      {dataManagerOpen && <DataManager onClose={() => setDataManagerOpen(false)} />}
+
+      {/* ── Vessel Trajectory Modal ── */}
+      {vesselTrajectoryOpen && (
+        <VesselTrajectory
+          onClose={() => setVesselTrajectoryOpen(false)}
+          onTrajectoryChange={(vessels) => {
+            updateMapTrajectories(vessels, map.current)
+          }}
+        />
+      )}
+
+      {/* ── Layer Manager Sidebar ── */}
+      <LayerManager
+        onLayersChange={(layers) => setActiveLayers(layers)}
+      />
 
       {/* ── About NavyNavi Modal ── */}
       {aboutOpen && (

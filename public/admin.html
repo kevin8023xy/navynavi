@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>船舶数据管理 - 上传 & 删除</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-top: 0;
+    }
+    .section {
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .section:last-child {
+      border-bottom: none;
+    }
+    .section h2 {
+      color: #666;
+      font-size: 18px;
+      margin-bottom: 15px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #333;
+      font-weight: 500;
+    }
+    input[type="file"],
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      min-height: 100px;
+      resize: vertical;
+    }
+    button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button:hover {
+      background: #0052a3;
+    }
+    button.danger {
+      background: #dc3545;
+    }
+    button.danger:hover {
+      background: #c82333;
+    }
+    button.secondary {
+      background: #6c757d;
+    }
+    button.secondary:hover {
+      background: #5a6268;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    .message {
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    .message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .message.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    .loading {
+      display: none;
+      color: #666;
+      font-size: 12px;
+    }
+    .loading.show {
+      display: inline;
+    }
+    .stats {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 15px;
+      font-size: 14px;
+      color: #666;
+    }
+    .stats-item {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⛴️ 船舶数据管理系统</h1>
+    <p style="color: #999; margin-bottom: 30px;">上传、删除、重建 AIS 船舶轨迹数据</p>
+
+    <!-- 上传部分 -->
+    <div class="section">
+      <h2>📤 上传 CSV 文件</h2>
+      <p style="color: #999; font-size: 13px;">上传新的 CSV 文件，会自动合并到现有数据（去重）。CSV 必须包含列：mmsi, lat, lon, sog, cog, heading, status, timestamp_ms</p>
+
+      <div class="form-group">
+        <label>选择 CSV 文件</label>
+        <input type="file" id="csvFile" accept=".csv,.gz" />
+      </div>
+
+      <div class="form-group">
+        <button onclick="uploadCsv()">上传 & 合并</button>
+        <span class="loading" id="uploadLoading">正在上传...</span>
+      </div>
+
+      <div id="uploadMessage"></div>
+    </div>
+
+    <!-- 删除部分 -->
+    <div class="section">
+      <h2>🗑️ 删除数据</h2>
+      <p style="color: #999; font-size: 13px;">按 MMSI 船舶编号、时间范围删除数据。支持测试运行预览将删除多少条记录。</p>
+
+      <div class="form-group">
+        <label>MMSI（船舶编号，可选）</label>
+        <input type="number" id="deleteMmsi" placeholder="例如：412226207" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>开始时间（Unix 时间戳，可选）</label>
+          <input type="number" id="deleteStartTime" placeholder="例如：1633046400" />
+        </div>
+        <div class="form-group">
+          <label>结束时间（Unix 时间戳，可选）</label>
+          <input type="number" id="deleteEndTime" placeholder="例如：1633132800" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <button class="secondary" onclick="deleteDataDryRun()">🔍 预览删除</button>
+        <button class="danger" onclick="deleteDataConfirm()">确认删除</button>
+        <span class="loading" id="deleteLoading">处理中...</span>
+      </div>
+
+      <div id="deleteMessage"></div>
+    </div>
+
+    <!-- 重建部分 -->
+    <div class="section">
+      <h2>🔄 重建数据缓存</h2>
+      <p style="color: #999; font-size: 13px;">上传或删除数据后，需要重建数据缓存才能在 API 中生效。</p>
+
+      <div class="form-group">
+        <button onclick="rebuildData()">重建数据缓存</button>
+        <span class="loading" id="rebuildLoading">正在重建...</span>
+      </div>
+
+      <div id="rebuildMessage"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api';
+
+    function showMessage(elementId, message, type = 'info') {
+      const el = document.getElementById(elementId);
+      el.innerHTML = `<div class="message ${type}">${message}</div>`;
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function setLoading(elementId, show) {
+      const el = document.getElementById(elementId);
+      el.classList.toggle('show', show);
+    }
+
+    async function uploadCsv() {
+      const fileInput = document.getElementById('csvFile');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        showMessage('uploadMessage', '请选择一个 CSV 文件', 'error');
+        return;
+      }
+
+      setLoading('uploadLoading', true);
+
+      try {
+        const text = await file.text();
+
+        const response = await fetch(`${API_BASE}/upload.js`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ csv: text }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showMessage('uploadMessage', `❌ 错误: ${data.error}`, 'error');
+          return;
+        }
+
+        showMessage('uploadMessage', `✅ 成功！已合并 ${data.recordCount} 条记录到 ${data.sizeKb} KB<br/>${data.note}`, 'success');
+        fileInput.value = '';
+      } catch (err) {
+        showMessage('uploadMessage', `❌ 错误: ${err.message}`, 'error');
+      } finally {
+        setLoading('uploadLoading', false);
+      }
+    }
+
+    async function deleteDataDryRun() {
+      const mmsi = document.getElementById('deleteMmsi').value.trim();
+      const startTime = document.getElementById('deleteStartTime').value.trim();
+      const endTime = document.getElementById('deleteEndTime').value.trim();
+
+      if (!mmsi && !startTime && !endTime) {
+        showMessage('deleteMessage', '请至少指定一个条件：MMSI、开始时间或结束时间', 'error');
+        return;
+      }
+
+      setLoading('deleteLoading', true);
+
+      try {
+        const response = await fetch(`${API_BASE}/delete.js`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mmsi: mmsi ? parseInt(mmsi) : undefined,
+            start_time: startTime ? parseInt(startTime) : undefined,
+            end_time: endTime ? parseInt(endTime) : undefined,
+            dry_run: true,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showMessage('deleteMessage', `❌ 错误: ${data.error}`, 'error');
+          return;
+        }
+
+        showMessage(
+          'deleteMessage',
+          `📊 预览：将删除 ${data.deletedCount} 条记录，保留 ${data.remainingCount} 条。<br/>确认无误后点击"确认删除"。`,
+          'info'
+        );
+      } catch (err) {
+        showMessage('deleteMessage', `❌ 错误: ${err.message}`, 'error');
+      } finally {
+        setLoading('deleteLoading', false);
+      }
+    }
+
+    async function deleteDataConfirm() {
+      if (!confirm('⚠️ 确定要删除这些数据吗？此操作不可逆。')) {
+        return;
+      }
+
+      const mmsi = document.getElementById('deleteMmsi').value.trim();
+      const startTime = document.getElementById('deleteStartTime').value.trim();
+      const endTime = document.getElementById('deleteEndTime').value.trim();
+
+      setLoading('deleteLoading', true);
+
+      try {
+        const response = await fetch(`${API_BASE}/delete.js`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mmsi: mmsi ? parseInt(mmsi) : undefined,
+            start_time: startTime ? parseInt(startTime) : undefined,
+            end_time: endTime ? parseInt(endTime) : undefined,
+            dry_run: false,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showMessage('deleteMessage', `❌ 错误: ${data.error}`, 'error');
+          return;
+        }
+
+        showMessage(
+          'deleteMessage',
+          `✅ 成功删除！删除 ${data.deletedCount} 条，保留 ${data.remainingCount} 条。<br/>${data.message}`,
+          'success'
+        );
+
+        document.getElementById('deleteMmsi').value = '';
+        document.getElementById('deleteStartTime').value = '';
+        document.getElementById('deleteEndTime').value = '';
+      } catch (err) {
+        showMessage('deleteMessage', `❌ 错误: ${err.message}`, 'error');
+      } finally {
+        setLoading('deleteLoading', false);
+      }
+    }
+
+    async function rebuildData() {
+      if (!confirm('重建数据缓存需要一些时间，继续吗？')) {
+        return;
+      }
+
+      setLoading('rebuildLoading', true);
+
+      try {
+        const response = await fetch(`${API_BASE}/rebuild.js`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showMessage('rebuildMessage', `❌ 错误: ${data.error}`, 'error');
+          return;
+        }
+
+        showMessage(
+          'rebuildMessage',
+          `✅ 完成！<br/>记录数: ${data.recordCount}<br/>JSON: ${data.jsonSizeMb} MB<br/>CSV: ${data.csvSizeMb} MB<br/>${data.message}`,
+          'success'
+        );
+      } catch (err) {
+        showMessage('rebuildMessage', `❌ 错误: ${err.message}`, 'error');
+      } finally {
+        setLoading('rebuildLoading', false);
+      }
+    }
+  </script>
+</body>
+</html>

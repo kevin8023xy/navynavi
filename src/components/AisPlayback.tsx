@@ -12,6 +12,7 @@ import {
   RotateCcw,
   TableProperties,
   ArrowUpFromDot,
+  X,
 } from 'lucide-react'
 
 import { loadAisData, queryTracks } from '../lib/aisData'
@@ -23,6 +24,7 @@ interface AisPlaybackProps {
   onPlaybackTimeChange: (time: number) => void
   onIntervalChange: (interval: number) => void
   onError?: (error: string | null) => void
+  onClose?: () => void
 }
 
 export default function AisPlayback({
@@ -30,6 +32,7 @@ export default function AisPlayback({
   onPlaybackTimeChange,
   onIntervalChange,
   onError,
+  onClose,
 }: AisPlaybackProps) {
   const [startTime, setStartTime] = useState('2021-10-01T00:00')
   const [endTime, setEndTime] = useState('2021-10-01T23:59')
@@ -179,7 +182,21 @@ export default function AisPlayback({
   }
 
   return (
-    <div className="absolute bottom-4 left-4 z-999 bg-[#dadada]/75 w-[calc(100%-2rem)] max-w-[627px] rounded-xl border shadow-lg border-none p-4 backdrop-blur-md">
+    <div className="absolute bottom-4 left-4 z-40 bg-[#dadada]/75 w-[calc(100%-2rem)] max-w-[627px] rounded-xl border shadow-lg border-none p-4 backdrop-blur-md">
+      {/* Header with Close Button */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-slate-800">AIS Playback</h3>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-200/80 text-slate-600 hover:bg-slate-300 hover:text-slate-800 transition-colors"
+            aria-label="Close"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-3 mb-4">
         {/* Start Time */}  
         <div>
