@@ -11,6 +11,35 @@ const CSV_FILENAME =
 const SMALL_CSV_FILENAME = 'data_small.csv';
 
 let cachedRecords = null;
+let cachedSourcePath = null;
+let cachedSourceMTime = null;
+
+function invalidateCache() {
+  cachedRecords = null;
+  cachedSourcePath = null;
+  cachedSourceMTime = null;
+  console.log('[data] cache invalidated');
+}
+
+function isCacheValid(sourcePath) {
+  if (cachedRecords === null || cachedSourcePath !== sourcePath) return false;
+  try {
+    const currentMTime = fs.statSync(sourcePath).mtimeMs;
+    return currentMTime === cachedSourceMTime;
+  } catch (err) {
+    return false;
+  }
+}
+
+function setCache(records, sourcePath) {
+  cachedRecords = records;
+  cachedSourcePath = sourcePath;
+  try {
+    cachedSourceMTime = fs.statSync(sourcePath).mtimeMs;
+  } catch (err) {
+    cachedSourceMTime = null;
+  }
+}
 
 function findFile(filenames) {
   const dirs = [process.cwd(), '/var/task', path.join('/var/task', 'api')];
@@ -109,6 +138,10 @@ function loadRecords() {
       for (const p of jsonCandidates) {
         console.log('[data] checking:', p, 'exists:', fs.existsSync(p));
         if (fs.existsSync(p)) {
+          if (isCacheValid(p)) {
+            console.log('[data] using cached json:', p);
+            return cachedRecords;
+          }
           console.log('[data] loading json:', p);
           let raw = fs.readFileSync(p, 'utf-8');
           if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
@@ -124,6 +157,7 @@ function loadRecords() {
             timestamp: r.timestamp,
             iso: new Date(r.timestamp * 1000).toISOString(),
           }));
+          setCache(cachedRecords, p);
           console.log('[data] loaded from json:', cachedRecords.length);
           return cachedRecords;
         }
@@ -151,7 +185,9 @@ function loadRecords() {
     if (useSmall) {
       const smallPath = findFile([SMALL_CSV_FILENAME]);
       if (smallPath) {
+        if (isCacheValid(smallPath)) return cachedRecords;
         cachedRecords = parseCsv(smallPath);
+        setCache(cachedRecords, smallPath);
         return cachedRecords;
       }
     }
@@ -159,7 +195,9 @@ function loadRecords() {
     // 4. 完整 CSV
     const csvPath = findFile([CSV_FILENAME]);
     if (csvPath) {
+      if (isCacheValid(csvPath)) return cachedRecords;
       cachedRecords = parseCsv(csvPath);
+      setCache(cachedRecords, csvPath);
       return cachedRecords;
     }
 
@@ -234,4 +272,4 @@ function queryTracks(q) {
   return { total, page: q.page, page_size: q.page_size, data };
 }
 
-module.exports = { getAllRecords, getShipsLatest, queryTracks };
+module.exports = { getAllRecords, getShipsLatest, queryTracks, invalidateCache };

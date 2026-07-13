@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Search, Layers } from 'lucide-react'
+import { Search, Layers, X } from 'lucide-react'
 import { useLayerSearch } from '../hooks/useLayerSearch'
 import StyleSelector from './StyleSelector'
 
@@ -20,15 +20,19 @@ export interface MapLayer {
 }
 
 interface LayerManagerProps {
+  onClose?: () => void
   onLayersChange?: (layers: MapLayer[]) => void
   onLayerFocus?: (layerId: string | null) => void
+  refreshKey?: number | string
 }
 
 const STORAGE_KEY = 'layerManager_activeLayers'
 
 export default function LayerManager({
+  onClose,
   onLayersChange,
   onLayerFocus,
+  refreshKey,
 }: LayerManagerProps) {
   const [allLayers, setAllLayers] = useState<MapLayer[]>([])
   const [activeLayers, setActiveLayers] = useState<MapLayer[]>([])
@@ -113,7 +117,8 @@ export default function LayerManager({
     }
 
     loadLayers()
-  }, [])
+  }, [refreshKey])
+
 
   // 保存活跃图层到 localStorage
   const saveActiveLayers = useCallback((layers: MapLayer[]) => {
@@ -203,9 +208,18 @@ export default function LayerManager({
       <div className="fixed right-0 top-9 h-[calc(100vh-36px)] w-1/5 bg-white/90 backdrop-blur-md border-l border-slate-200 flex flex-col z-40">
         {/* Header */}
         <div className="px-4 py-3 border-b border-slate-200 flex-shrink-0">
-          <div className="flex items-center gap-2 mb-3">
-            <Layers className="w-4 h-4 text-slate-600" />
-            <h2 className="font-semibold text-slate-800 text-sm">Layers</h2>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-slate-600" />
+              <h2 className="font-semibold text-slate-800 text-sm">Layers</h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-slate-100 rounded-lg transition text-slate-400 hover:text-slate-600"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
           </div>
 
           {/* Search Bar */}

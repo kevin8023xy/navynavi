@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Upload, Trash2, X, AlertCircle } from 'lucide-react'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -7,6 +7,7 @@ import { Button } from '@mui/material'
 
 interface DataManagerProps {
   onClose: () => void
+  onDataChange?: () => void
 }
 
 interface DataRecord {
@@ -22,7 +23,7 @@ interface DataRecord {
   status?: string
 }
 
-export default function DataManager({ onClose }: DataManagerProps) {
+export default function DataManager({ onClose, onDataChange }: DataManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -38,7 +39,6 @@ export default function DataManager({ onClose }: DataManagerProps) {
 
   // Delete confirmation modal
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [deleteConfirmStep, setDeleteConfirmStep] = useState(0)
 
   // Display limit for virtualized list
   const [displayLimit, setDisplayLimit] = useState(500)
@@ -52,7 +52,39 @@ export default function DataManager({ onClose }: DataManagerProps) {
   }
 
   // 通用数据获取：按时间范围从后端加载
-  const fetchRecords = async (start: number, end: number): Promise<DataRecord[]> => {
+  const parseRawRecords = useCallback((rawData: any[]): DataRecord[] => {
+    return rawData
+      .map((record: any, idx: number) => {
+        let timestamp = 0
+        if (record.timestamp_ms) {
+          timestamp = Math.floor(record.timestamp_ms / 1000)
+        } else if (record.timestamp) {
+          timestamp = typeof record.timestamp === 'string'
+            ? Math.floor(new Date(record.timestamp).getTime() / 1000)
+            : record.timestamp
+        } else if (record.time) {
+          timestamp = typeof record.time === 'string'
+            ? Math.floor(new Date(record.time).getTime() / 1000)
+            : record.time
+        }
+
+        return {
+          id: `${record.mmsi}_${idx}`,
+          mmsi: record.mmsi,
+          name: record.name || `Vessel ${record.mmsi}`,
+          timestamp: timestamp || Math.floor(Date.now() / 1000),
+          lat: record.lat,
+          lon: record.lon,
+          sog: record.sog,
+          cog: record.cog,
+          heading: record.heading,
+          status: record.status,
+        }
+      })
+      .filter((record: DataRecord) => record.timestamp > 0)
+  }, [])
+
+  const fetchRecords = useCallback(async (start: number, end: number): Promise<DataRecord[]> => {
     setLoading(true)
     try {
       const response = await fetch(
@@ -62,37 +94,7 @@ export default function DataManager({ onClose }: DataManagerProps) {
       const data = await response.json()
 
       if (data.data && Array.isArray(data.data)) {
-        const records: DataRecord[] = data.data
-          .map((record: any, idx: number) => {
-            let timestamp = 0
-            if (record.timestamp_ms) {
-              timestamp = Math.floor(record.timestamp_ms / 1000)
-            } else if (record.timestamp) {
-              timestamp = typeof record.timestamp === 'string'
-                ? Math.floor(new Date(record.timestamp).getTime() / 1000)
-                : record.timestamp
-            } else if (record.time) {
-              timestamp = typeof record.time === 'string'
-                ? Math.floor(new Date(record.time).getTime() / 1000)
-                : record.time
-            }
-
-            return {
-              id: `${record.mmsi}_${idx}`,
-              mmsi: record.mmsi,
-              name: record.name || `Vessel ${record.mmsi}`,
-              timestamp: timestamp || Math.floor(Date.now() / 1000),
-              lat: record.lat,
-              lon: record.lon,
-              sog: record.sog,
-              cog: record.cog,
-              heading: record.heading,
-              status: record.status,
-            }
-          })
-          .filter((record: DataRecord) => record.timestamp > 0)
-
-        return records
+        return parseRawRecords(data.data)
       }
       return []
     } catch (err) {
@@ -102,10 +104,32 @@ export default function DataManager({ onClose }: DataManagerProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [API_BASE, parseRawRecords])
+
+  const fetchByMmsi = useCallback(async (mmsi: string) => {
+    setLoading(true)
+    try {
+      const response = await fetch(
+        `${API_BASE}/tracks?mmsi=${encodeURIComponent(mmsi)}&page_size=100000&t=${Date.now()}`,
+        { cache: 'no-store' }
+      )
+      const data = await response.json()
+
+      if (data.data && Array.isArray(data.data)) {
+        const records = parseRawRecords(data.data)
+        setAllData(records)
+        setFilteredData(records)
+      }
+    } catch (err) {
+      console.error('Failed to fetch by MMSI:', err)
+      showMessage('error', 'Failed to fetch by MMSI')
+    } finally {
+      setLoading(false)
+    }
+  }, [API_BASE, parseRawRecords])
 
   // 名字筛选（时间范围已在后端过滤）
-  const applyNameFilter = (data: DataRecord[], name: string) => {
+  const applyNameFilter = useCallback((data: DataRecord[], name: string) => {
     if (!name) {
       setFilteredData(data)
       return
@@ -117,7 +141,7 @@ export default function DataManager({ onClose }: DataManagerProps) {
       return nameMatch
     })
     setFilteredData(filtered)
-  }
+  }, [])
 
   // Toggle record selection
   const toggleSelect = (id: string) => {
@@ -139,30 +163,36 @@ export default function DataManager({ onClose }: DataManagerProps) {
     }
   }
 
-  // 时间范围变化时从后端重新查询
+  // 根据时间范围或 MMSI 查询后端数据
   useEffect(() => {
-    if (!filterDateFrom && !filterDateTo) {
-      setAllData([])
-      setFilteredData([])
-      return
-    }
+    const timer = setTimeout(() => {
+      const hasName = filterName.trim().length > 0
+      const hasDate = filterDateFrom || filterDateTo
 
-    const start = filterDateFrom
-      ? Math.floor(filterDateFrom.getTime() / 1000)
-      : 0
-    const end = filterDateTo
-      ? Math.floor(filterDateTo.getTime() / 1000)
-      : Math.floor(Date.now() / 1000)
+      if (!hasName && !hasDate) {
+        setAllData([])
+        setFilteredData([])
+        return
+      }
 
-    fetchRecords(start, end).then(records => {
-      setAllData(records)
-    })
-  }, [filterDateFrom, filterDateTo])
+      if (hasDate) {
+        const start = filterDateFrom
+          ? Math.floor(filterDateFrom.getTime() / 1000)
+          : 0
+        const end = filterDateTo
+          ? Math.floor(filterDateTo.getTime() / 1000)
+          : Math.floor(Date.now() / 1000)
+        fetchRecords(start, end).then(records => {
+          setAllData(records)
+          applyNameFilter(records, filterName)
+        })
+      } else if (hasName) {
+        fetchByMmsi(filterName)
+      }
+    }, 500)
 
-  // 名字筛选
-  useEffect(() => {
-    applyNameFilter(allData, filterName)
-  }, [filterName, allData])
+    return () => clearTimeout(timer)
+  }, [filterName, filterDateFrom, filterDateTo, fetchRecords, fetchByMmsi, applyNameFilter])
 
   // 处理文件上传
   const handleFileUpload = async (file: File) => {
@@ -247,6 +277,9 @@ export default function DataManager({ onClose }: DataManagerProps) {
       setAllData(refreshRecords)
       applyNameFilter(refreshRecords, filterName)
       showMessage('success', `✓ Loaded ${refreshRecords.length} records from cache`)
+
+      // 通知外部数据已变更
+      onDataChange?.()
     } catch (err) {
       showMessage('error', `✗ Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
@@ -263,18 +296,10 @@ export default function DataManager({ onClose }: DataManagerProps) {
       showMessage('error', 'Select records to delete')
       return
     }
-    setDeleteConfirmStep(0)
     setShowDeleteModal(true)
   }
 
   const handleDeleteConfirm = async () => {
-    // First click: move to final confirmation step
-    if (deleteConfirmStep === 0) {
-      setDeleteConfirmStep(1)
-      return
-    }
-
-    // Second click: perform actual deletion
     if (selectedIds.size === 0) {
       showMessage('error', 'No records selected')
       return
@@ -311,18 +336,16 @@ export default function DataManager({ onClose }: DataManagerProps) {
       showMessage('success', `Deleted ${selectedIds.size} record(s)`)
       setSelectedIds(new Set())
       setShowDeleteModal(false)
-      setDeleteConfirmStep(0)
 
-      // Reload current time range (no cache)
-      const start = filterDateFrom
-        ? Math.floor(filterDateFrom.getTime() / 1000)
-        : 0
-      const end = filterDateTo
-        ? Math.floor(filterDateTo.getTime() / 1000)
-        : Math.floor(Date.now() / 1000)
-      const refreshRecords = await fetchRecords(start, end)
-      setAllData(refreshRecords)
-      applyNameFilter(refreshRecords, filterName)
+      // 重置筛选条件并清空表格
+      setFilterName('')
+      setFilterDateFrom(null)
+      setFilterDateTo(null)
+      setAllData([])
+      setFilteredData([])
+
+      // 通知外部数据已变更
+      onDataChange?.()
     } catch (err) {
       showMessage('error', `Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
@@ -332,7 +355,6 @@ export default function DataManager({ onClose }: DataManagerProps) {
 
   const handleDeleteCancel = () => {
     setShowDeleteModal(false)
-    setDeleteConfirmStep(0)
   }
 
   return (
@@ -344,7 +366,10 @@ export default function DataManager({ onClose }: DataManagerProps) {
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-slate-800">Data Manager</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Active: <span className="text-blue-600 font-medium">{allData.length}</span> records
+                Active: <span className="text-blue-600 font-medium">{filteredData.length}</span> records
+                {filterName && allData.length > 0 && (
+                  <span className="text-slate-400 ml-1">/ {allData.length} total</span>
+                )}
               </p>
             </div>
             <button
@@ -607,7 +632,7 @@ export default function DataManager({ onClose }: DataManagerProps) {
               <div className="flex items-center gap-3 mb-4">
                 <AlertCircle className="w-5 h-5 text-red-500" />
                 <h3 className="text-base font-semibold text-slate-900">
-                  {deleteConfirmStep === 0 ? 'Confirm Deletion' : 'Final Confirmation'}
+                  Confirm Deletion
                 </h3>
               </div>
 
@@ -619,14 +644,6 @@ export default function DataManager({ onClose }: DataManagerProps) {
                 <p className="text-sm text-slate-600">
                   This action <span className="font-semibold text-red-600">cannot be undone</span>.
                 </p>
-
-                {deleteConfirmStep === 1 && (
-                  <div className="bg-red-50 border border-red-300 rounded-lg p-3">
-                    <p className="text-sm font-medium text-red-700">
-                      Click "Delete Records" again to permanently delete these records.
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* Modal Footer */}
@@ -642,7 +659,7 @@ export default function DataManager({ onClose }: DataManagerProps) {
                   disabled={loading}
                   className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {deleteConfirmStep === 0 ? 'Proceed' : loading ? 'Deleting...' : 'Delete Records'}
+                  {loading ? 'Deleting...' : 'Delete'}
                 </button>
               </div>
             </div>

@@ -7,14 +7,12 @@ import compassIcon from '../assets/compass.png'
 import logo from '../assets/logo.webp'
 import AisPlayback from '../components/AisPlayback'
 import DataManager from '../components/DataManager'
-import VesselTrajectory from '../components/VesselTrajectory'
 import LayerManager from '../components/LayerManager'
 import type { MapLayer } from '../components/LayerManager'
 
 const TOOLS_MENU = [
   { label: 'AIS Codec', submenu: ['Encoder', 'Decoder'] },
   { label: 'AIS Playback' },
-  { label: 'Vessel Trajectory' },
   { label: 'Layer Manager' },
   { separator: true },
   { label: 'Data Manager' },
@@ -104,12 +102,14 @@ export default function Console() {
   const [chartVisible, setChartVisible] = useState(true)
   const [aisPlaybackOpen, setAisPlaybackOpen] = useState(false)
   const [dataManagerOpen, setDataManagerOpen] = useState(false)
-  const [vesselTrajectoryOpen, setVesselTrajectoryOpen] = useState(false)
+  const [layerManagerOpen, setLayerManagerOpen] = useState(false)
   const trajectorySourceRef = useRef<string | null>(null)
   const trajectoryLayersRef = useRef<string[]>([])
   const trajectoryCoordinatesRef = useRef<Map<number, [number, number][]>>(new Map())
   const [activeLayers, setActiveLayers] = useState<MapLayer[]>([])
   const [focusedLayerId, setFocusedLayerId] = useState<string | null>(null)
+  const [dataVersion, setDataVersion] = useState(0)
+
 
   // NavyNavi app menu state
   const [navyMenuOpen, setNavyMenuOpen] = useState(false)
@@ -254,7 +254,8 @@ export default function Console() {
     }))
 
     updateMapTrajectories(vessels, map.current)
-  }, [activeLayers, updateMapTrajectories])
+  }, [activeLayers, dataVersion, updateMapTrajectories])
+
 
   // ── Handle layer focus (highlight and fly to) ──
   useEffect(() => {
@@ -858,7 +859,7 @@ export default function Console() {
                         setToolsOpen(false)
                         if (item.label === 'AIS Playback') setAisPlaybackOpen(true)
                         if (item.label === 'Data Manager') setDataManagerOpen(true)
-                        if (item.label === 'Vessel Trajectory') setVesselTrajectoryOpen(true)
+                        if (item.label === 'Layer Manager') setLayerManagerOpen(true)
                       }}
                       className="flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
                     >
@@ -959,23 +960,24 @@ export default function Console() {
       )}
 
       {/* ── Data Manager Modal ── */}
-      {dataManagerOpen && <DataManager onClose={() => setDataManagerOpen(false)} />}
-
-      {/* ── Vessel Trajectory Modal ── */}
-      {vesselTrajectoryOpen && (
-        <VesselTrajectory
-          onClose={() => setVesselTrajectoryOpen(false)}
-          onTrajectoryChange={(vessels) => {
-            updateMapTrajectories(vessels, map.current)
-          }}
+      {dataManagerOpen && (
+        <DataManager
+          onClose={() => setDataManagerOpen(false)}
+          onDataChange={() => setDataVersion((v) => v + 1)}
         />
       )}
 
+
       {/* ── Layer Manager Sidebar ── */}
-      <LayerManager
-        onLayersChange={(layers) => setActiveLayers(layers)}
-        onLayerFocus={(layerId) => setFocusedLayerId(layerId)}
-      />
+      {layerManagerOpen && (
+        <LayerManager
+          refreshKey={dataVersion}
+          onClose={() => setLayerManagerOpen(false)}
+          onLayersChange={(layers) => setActiveLayers(layers)}
+          onLayerFocus={(layerId) => setFocusedLayerId(layerId)}
+        />
+      )}
+
 
       {/* ── About NavyNavi Modal ── */}
       {aboutOpen && (

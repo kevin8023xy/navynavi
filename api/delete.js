@@ -3,6 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { spawn } = require('child_process');
+const { invalidateCache } = require('./lib/data');
 
 const handler = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -28,11 +30,12 @@ const handler = async (req, res) => {
       return res.status(400).json({ error: 'Invalid request body' });
     }
 
-    const { mmsi, start_time, end_time, dry_run = false } = body;
+    const { mmsi, start_time, end_time, dry_run = false, records } = body;
 
-    if (!mmsi && !start_time && !end_time) {
+    const hasRecords = Array.isArray(records) && records.length > 0;
+    if (!mmsi && !start_time && !end_time && !hasRecords) {
       return res.status(400).json({
-        error: 'At least one filter required: mmsi, start_time, or end_time',
+        error: 'At least one filter required: mmsi, start_time, end_time, or records',
       });
     }
 
@@ -64,6 +67,16 @@ const handler = async (req, res) => {
       });
     }
 
+    // 构建精确删除集合
+    const deleteSet = new Set();
+    if (hasRecords) {
+      for (const r of records) {
+        if (r && r.mmsi != null && r.timestamp_ms != null) {
+          deleteSet.add(`${r.mmsi}_${r.timestamp_ms}`);
+        }
+      }
+    }
+
     // 过滤数据
     const headerLine = lines[0];
     const dataLines = lines.slice(1);
@@ -74,6 +87,11 @@ const handler = async (req, res) => {
       const cols = line.split(',');
       const recordMmsi = parseInt(cols[colIdx.mmsi], 10);
       const recordTs = parseInt(cols[colIdx.timestamp_ms], 10);
+
+      // 精确删除指定的 (mmsi, timestamp_ms) 记录
+      if (deleteSet.size > 0) {
+        return !deleteSet.has(`${recordMmsi}_${recordTs}`);
+      }
 
       // 检查是否匹配删除条件
       if (mmsi && recordMmsi === parseInt(mmsi, 10)) {
@@ -110,15 +128,36 @@ const handler = async (req, res) => {
 
     console.log('[delete] Records deleted:', {
       filters: { mmsi, start_time, end_time },
+      recordsCount: deleteSet.size,
       deletedCount,
       remainingCount: filteredLines.length,
+    });
+
+    // 异步重建数据缓存
+    const rebuildProcess = spawn('node', ['scripts/build-data.js'], {
+      cwd: process.cwd(),
+      detached: true,
+      stdio: 'pipe',
+    });
+
+    rebuildProcess.on('exit', (code) => {
+      if (code === 0) {
+        console.log('[delete] ✓ Rebuild data completed');
+        invalidateCache();
+      } else {
+        console.error('[delete] ✗ Rebuild data exited with code:', code);
+      }
+    });
+
+    rebuildProcess.on('error', (err) => {
+      console.error('[delete] ✗ Rebuild data error:', err.message);
     });
 
     return res.json({
       success: true,
       deletedCount,
       remainingCount: filteredLines.length,
-      message: '记录已删除。请运行 npm run build:data 重新生成数据缓存',
+      message: 'Records deleted. Data cache is being rebuilt in background...',
     });
   } catch (err) {
     console.error('[delete] Error:', err);

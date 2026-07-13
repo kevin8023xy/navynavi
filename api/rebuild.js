@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { invalidateCache } = require('./lib/data');
 
 const handler = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -88,6 +89,8 @@ const handler = async (req, res) => {
     console.log(
       `[rebuild] Done. Records: ${records.length}, JSON: ${jsonSize}MB, CSV: ${csvSize}MB`,
     );
+
+    invalidateCache();
 
     return res.json({
       success: true,

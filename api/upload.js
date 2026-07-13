@@ -4,6 +4,42 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { execSync } = require('child_process');
+const { invalidateCache } = require('./lib/data');
+
+function parseCsvLines(csvText) {
+  const lines = csvText.trim().split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length === 0) return { headers: [], rows: [] };
+  const headers = lines[0].split(',').map((h) => h.trim());
+  return { headers, rows: lines.slice(1) };
+}
+
+function getColIndex(headers, names) {
+  const lowerHeaders = headers.map((h) => h.toLowerCase());
+  for (const name of names) {
+    const idx = lowerHeaders.indexOf(name.toLowerCase());
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function convertRow(cols, targetHeaders, sourceHeaders) {
+  const colMap = {};
+  for (let i = 0; i < sourceHeaders.length; i++) {
+    colMap[sourceHeaders[i].toLowerCase()] = cols[i] ?? '';
+  }
+
+  return targetHeaders.map((targetHeader) => {
+    const lower = targetHeader.toLowerCase();
+    if (colMap[lower] !== undefined) return colMap[lower];
+    if (lower === 'group_id') return '0';
+    if (lower === 'datetime')
+      return new Date().toISOString().slice(0, 19).replace('T', ' ');
+    if (lower === 'timestamp') return new Date().toISOString();
+    if (lower === 'rot') return '0';
+    return '';
+  });
+}
+
 
 const handler = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -76,44 +112,53 @@ const handler = async (req, res) => {
     }
 
     let mergedCsv = '';
-    if (existingCsv) {
-      const existingLines = existingCsv.trim().split(/\r?\n/);
-      const existingHeaders = existingLines[0].split(',').map(h => h.trim());
+    const { headers: existingHeaders, rows: existingRows } = existingCsv
+      ? parseCsvLines(existingCsv)
+      : { headers: [], rows: [] };
 
-      // 直接追加新数据行（不做去重，因为会导致大文件内存溢出）
-      // 假设新数据来自不同时间范围
-      if (JSON.stringify(newHeaders) !== JSON.stringify(existingHeaders)) {
-        // 如果列不相同，需要转换
-        const newHeadersLower = newHeaders.map(h => h.toLowerCase());
-        const colMapping = {};
-        for (const existingHeader of existingHeaders) {
-          const idx = newHeadersLower.indexOf(existingHeader.toLowerCase());
-          colMapping[existingHeader] = idx;
-        }
+    // 以现有文件列名为基准；若尚无现有文件，则以新文件列名为基准
+    const targetHeaders =
+      existingHeaders.length > 0 ? existingHeaders : newHeaders;
 
-        const convertedLines = newLines.slice(1).filter(l => l.trim()).map(line => {
-          const cols = line.split(',');
-          return existingHeaders.map(header => {
-            const idx = colMapping[header];
-            if (idx >= 0 && idx < cols.length) {
-              return cols[idx];
-            }
-            if (header === 'group_id') return '0';
-            if (header === 'datetime') return new Date().toISOString().slice(0, 19).replace('T', ' ');
-            if (header === 'timestamp') return new Date().toISOString();
-            if (header === 'rot') return '0';
-            return '';
-          }).join(',');
-        });
-        mergedCsv = existingCsv + '\n' + convertedLines.join('\n');
-      } else {
-        // 列完全相同，直接追加
-        const newDataLines = newLines.slice(1).filter(line => line.trim());
-        mergedCsv = existingCsv + '\n' + newDataLines.join('\n');
-      }
-    } else {
-      mergedCsv = csvContent;
+    const mmsiIdx = getColIndex(targetHeaders, ['mmsi']);
+    const tsIdx = getColIndex(targetHeaders, ['timestamp_ms']);
+
+    if (mmsiIdx < 0 || tsIdx < 0) {
+      return res.status(400).json({
+        error: 'Cannot locate mmsi or timestamp_ms columns in target CSV',
+      });
     }
+
+    // 使用 mmsi + timestamp_ms 作为唯一键，新数据覆盖旧数据
+    const recordMap = new Map();
+
+    for (const line of existingRows) {
+      if (!line.trim()) continue;
+      const cols = line.split(',');
+      const mmsi = cols[mmsiIdx];
+      const ts = cols[tsIdx];
+      if (!mmsi || !ts) continue;
+      recordMap.set(`${mmsi}_${ts}`, cols);
+    }
+
+    const newMmsiIdx = getColIndex(newHeaders, ['mmsi']);
+    const newTsIdx = getColIndex(newHeaders, ['timestamp_ms']);
+
+    for (const line of newLines.slice(1).filter((l) => l.trim())) {
+      const cols = line.split(',');
+      const mmsi = cols[newMmsiIdx];
+      const ts = cols[newTsIdx];
+      if (!mmsi || !ts) continue;
+      const converted =
+        existingHeaders.length > 0
+          ? convertRow(cols, targetHeaders, newHeaders)
+          : cols;
+      recordMap.set(`${mmsi}_${ts}`, converted);
+    }
+
+    const mergedRows = Array.from(recordMap.values());
+    mergedCsv = [targetHeaders.join(','), ...mergedRows.map((cols) => cols.join(','))].join('\n');
+
 
     // 压缩并保存
     const compressed = zlib.gzipSync(mergedCsv);
@@ -139,6 +184,7 @@ const handler = async (req, res) => {
     buildProcess.on('exit', (code) => {
       if (code === 0) {
         console.log('[upload] ✓ Build data completed successfully');
+        invalidateCache();
       } else {
         console.error('[upload] ✗ Build data exited with code:', code);
       }
