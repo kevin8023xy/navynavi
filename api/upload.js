@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { execSync } = require('child_process');
 
 const handler = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -79,9 +80,10 @@ const handler = async (req, res) => {
       const existingLines = existingCsv.trim().split(/\r?\n/);
       const existingHeaders = existingLines[0].split(',').map(h => h.trim());
 
-      // 如果列不完全相同，尝试转换新 CSV 到现有结构
+      // 直接追加新数据行（不做去重，因为会导致大文件内存溢出）
+      // 假设新数据来自不同时间范围
       if (JSON.stringify(newHeaders) !== JSON.stringify(existingHeaders)) {
-        // 找到每列在新 CSV 中的索引
+        // 如果列不相同，需要转换
         const newHeadersLower = newHeaders.map(h => h.toLowerCase());
         const colMapping = {};
         for (const existingHeader of existingHeaders) {
@@ -89,7 +91,6 @@ const handler = async (req, res) => {
           colMapping[existingHeader] = idx;
         }
 
-        // 转换数据行
         const convertedLines = newLines.slice(1).filter(l => l.trim()).map(line => {
           const cols = line.split(',');
           return existingHeaders.map(header => {
@@ -97,7 +98,6 @@ const handler = async (req, res) => {
             if (idx >= 0 && idx < cols.length) {
               return cols[idx];
             }
-            // 如果列缺失，填充默认值
             if (header === 'group_id') return '0';
             if (header === 'datetime') return new Date().toISOString().slice(0, 19).replace('T', ' ');
             if (header === 'timestamp') return new Date().toISOString();
@@ -105,18 +105,10 @@ const handler = async (req, res) => {
             return '';
           }).join(',');
         });
-
-        // 去重并合并
-        const existingSet = new Set(existingLines.slice(1).filter(l => l.trim()));
-        const newDataLines = convertedLines.filter(line => !existingSet.has(line));
-
-        mergedCsv = existingCsv + '\n' + newDataLines.join('\n');
+        mergedCsv = existingCsv + '\n' + convertedLines.join('\n');
       } else {
-        // 列完全相同，直接去重合并
-        const existingSet = new Set(existingLines.slice(1).filter(l => l.trim()));
-        const newDataLines = newLines.slice(1).filter(line => {
-          return line.trim() && !existingSet.has(line);
-        });
+        // 列完全相同，直接追加
+        const newDataLines = newLines.slice(1).filter(line => line.trim());
         mergedCsv = existingCsv + '\n' + newDataLines.join('\n');
       }
     } else {
@@ -136,13 +128,34 @@ const handler = async (req, res) => {
       records: mergedCsv.split('\n').length - 1,
     });
 
+    // 异步运行数据构建脚本（不阻塞上传响应）
+    const { spawn } = require('child_process');
+    const buildProcess = spawn('node', ['scripts/build-data.js'], {
+      cwd: process.cwd(),
+      detached: true,
+      stdio: 'pipe'
+    });
+
+    buildProcess.on('exit', (code) => {
+      if (code === 0) {
+        console.log('[upload] ✓ Build data completed successfully');
+      } else {
+        console.error('[upload] ✗ Build data exited with code:', code);
+      }
+    });
+
+    buildProcess.on('error', (err) => {
+      console.error('[upload] ✗ Build data error:', err.message);
+    });
+
+    // 立即返回成功响应
     return res.json({
       success: true,
-      message: 'CSV merged and compressed',
+      message: 'CSV uploaded and data rebuild triggered',
       file: csvPath,
       sizeKb,
       recordCount: mergedCsv.split('\n').length - 1,
-      note: '请运行 npm run build:data 重新生成数据缓存',
+      note: 'Data cache is being rebuilt in background...',
     });
   } catch (err) {
     console.error('[upload] Error:', err);

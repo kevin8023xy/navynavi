@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/iav82d/src/components/**)",
+      "Read(//e/Users/iav82d/src/components/**)"
+    ],
+    "additionalDirectories": [
+      "\\Users\\tznovs",
+      "\\Users\\iav82d",
+      "e:\\Users\\iav82d"
+    ]
+  }
+}

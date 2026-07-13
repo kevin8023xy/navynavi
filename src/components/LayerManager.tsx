@@ -63,7 +63,7 @@ export default function LayerManager({
     const loadLayers = async () => {
       setLoading(true)
       try {
-        const response = await fetch('/api/tracks?page_size=100000')
+        const response = await fetch('/api/tracks?page_size=100000000000000000')
         const data = await response.json()
 
         if (data.data && Array.isArray(data.data)) {

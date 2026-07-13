@@ -180,7 +180,7 @@ export default function Console() {
       const features: any[] = []
 
       for (const vessel of vessels) {
-        const response = await fetch(`/api/tracks?mmsi=${vessel.mmsi}&page_size=100000`)
+        const response = await fetch(`/api/tracks?mmsi=${vessel.mmsi}&page_size=10000000000000000`)
         const data = await response.json()
 
         if (data.data && data.data.length > 0) {

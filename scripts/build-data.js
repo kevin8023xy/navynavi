@@ -17,9 +17,10 @@ const JSON_PATH = path.resolve(projectRoot, 'api', 'lib', 'record1.json');
 function getLimit() {
   const env = process.env.RECORD_LIMIT;
   if (env === 'all') return Infinity;
-  if (!env) return 100000;
+  // 默认加载所有数据，不限制
+  if (!env) return Infinity;
   const n = parseInt(env, 10);
-  return isNaN(n) ? 100 : n;
+  return isNaN(n) ? Infinity : n;
 }
 
 function main() {

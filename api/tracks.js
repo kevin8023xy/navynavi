@@ -34,12 +34,12 @@ module.exports = function handler(req, res) {
         1,
         parseInt(typeof page === 'string' ? page : '1', 10) || 1,
       ),
-      page_size: Math.min(
-        100,
-        Math.max(
-          1,
-          parseInt(typeof page_size === 'string' ? page_size : '500', 10) ||
-            500,
+      page_size: Math.max(
+        1,
+        Math.min(
+          500000000,
+          parseInt(typeof page_size === 'string' ? page_size : '10000', 10) ||
+            100000000,
         ),
       ),
     });

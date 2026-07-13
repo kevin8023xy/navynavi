@@ -95,24 +95,7 @@ function loadRecords() {
       // data_10k.js 不存在时继续走后续 fallback
     }
 
-    // 2. 使用内嵌数据（直接写在代码里，不依赖文件系统，也不受 USE_SMALL_DATA 影响）
-    if (EMBEDDED_RECORDS && EMBEDDED_RECORDS.length > 0) {
-      console.log('[data] using embedded records:', EMBEDDED_RECORDS.length);
-      cachedRecords = EMBEDDED_RECORDS.map((r) => ({
-        mmsi: r.mmsi,
-        lat: r.lat,
-        lng: r.lng,
-        sog: r.sog,
-        cog: r.cog,
-        heading: r.heading,
-        status: r.status,
-        timestamp: r.timestamp,
-        iso: new Date(r.timestamp * 1000).toISOString(),
-      }));
-      return cachedRecords;
-    }
-
-    // 2. 尝试从文件系统读取（本地开发或备用）
+    // 2. 优先从文件系统读取 JSON（本地开发）
     if (!useSmall) {
       const jsonCandidates = [
         path.join(process.cwd(), 'api', 'lib', 'record1.json'),
@@ -121,7 +104,10 @@ function loadRecords() {
         path.join(process.cwd(), 'api', 'lib', 'records.json'),
         path.join('/var/task', 'api', 'lib', 'records.json'),
       ];
+      console.log('[data] cwd:', process.cwd());
+      console.log('[data] checking json candidates:', jsonCandidates);
       for (const p of jsonCandidates) {
+        console.log('[data] checking:', p, 'exists:', fs.existsSync(p));
         if (fs.existsSync(p)) {
           console.log('[data] loading json:', p);
           let raw = fs.readFileSync(p, 'utf-8');
@@ -144,7 +130,24 @@ function loadRecords() {
       }
     }
 
-    // 3. 小数据集
+    // 3. 使用内嵌数据作为备用（如果 JSON 文件不存在）
+    if (EMBEDDED_RECORDS && EMBEDDED_RECORDS.length > 0) {
+      console.log('[data] using embedded records (fallback):', EMBEDDED_RECORDS.length);
+      cachedRecords = EMBEDDED_RECORDS.map((r) => ({
+        mmsi: r.mmsi,
+        lat: r.lat,
+        lng: r.lng,
+        sog: r.sog,
+        cog: r.cog,
+        heading: r.heading,
+        status: r.status,
+        timestamp: r.timestamp,
+        iso: new Date(r.timestamp * 1000).toISOString(),
+      }));
+      return cachedRecords;
+    }
+
+    // 4. 小数据集
     if (useSmall) {
       const smallPath = findFile([SMALL_CSV_FILENAME]);
       if (smallPath) {

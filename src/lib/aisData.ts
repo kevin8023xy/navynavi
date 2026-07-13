@@ -3,7 +3,7 @@ import { inflate } from 'pako';
 import { openDB } from 'idb';
 
 const DB_NAME = 'ais-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Increment to force cache refresh
 const CSV_URL = '/data/ais.csv.gz';
 const WRITE_BATCH_SIZE = 5000;
 
