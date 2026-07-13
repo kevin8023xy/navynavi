@@ -19,6 +19,7 @@ const rebuildHandler = require(path.join(API_DIR, 'rebuild.js'));
 const statsHandler = require(path.join(API_DIR, 'stats.js'));
 const shipsHandler = require(path.join(API_DIR, 'ships.js'));
 const tracksHandler = require(path.join(API_DIR, 'tracks.js'));
+const stylesHandler = require(path.join(API_DIR, 'styles.js'));
 
 // 定义路由（支持带/不带 .js 后缀）
 app.post('/api/upload.js', uploadHandler);
@@ -38,6 +39,9 @@ app.get('/api/ships', shipsHandler);
 
 app.get('/api/tracks.js', tracksHandler);
 app.get('/api/tracks', tracksHandler);
+
+app.get('/api/styles', stylesHandler);
+app.post('/api/styles', stylesHandler);
 
 // 处理 OPTIONS 请求
 app.options('/api/*', (req, res) => {

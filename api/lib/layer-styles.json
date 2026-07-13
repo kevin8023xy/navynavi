@@ -1,0 +1,29 @@
+{
+  "999001264": {
+    "color": "#99c328",
+    "width": 2,
+    "opacity": 0.8,
+    "dashArray": [
+      5,
+      5
+    ]
+  },
+  "999001336": {
+    "color": "#d590a1",
+    "width": 2,
+    "opacity": 0.8,
+    "dashArray": [
+      5,
+      5
+    ]
+  },
+  "999001344": {
+    "color": "#4ECDC4",
+    "width": 2,
+    "opacity": 0.8,
+    "dashArray": [
+      5,
+      5
+    ]
+  }
+}

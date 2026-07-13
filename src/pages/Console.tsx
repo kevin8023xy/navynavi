@@ -149,7 +149,7 @@ export default function Console() {
   const shipListenersAdded = useRef(false)
 
   // ── Update map trajectories ──
-  const updateMapTrajectories = useCallback(async (vessels: Array<{ mmsi: number; color: string; dashed: boolean }>, mapRef: maplibregl.Map | null) => {
+  const updateMapTrajectories = useCallback(async (vessels: Array<{ mmsi: number; color: string; dashed: boolean; visible: boolean }>, mapRef: maplibregl.Map | null) => {
     if (!mapRef) return
 
     // 移除旧的轨迹图层
@@ -180,6 +180,8 @@ export default function Console() {
       const features: any[] = []
 
       for (const vessel of vessels) {
+        if (!vessel.visible) continue
+
         const response = await fetch(`/api/tracks?mmsi=${vessel.mmsi}&page_size=10000000000000000`)
         const data = await response.json()
 
@@ -237,6 +239,30 @@ export default function Console() {
           },
           filter: ['==', ['get', 'mmsi'], feature.properties.mmsi],
         })
+
+        // 为轨迹线添加方向箭头
+        const arrowLayerName = `trajectory-arrow-${sourceName}-${idx}`
+        trajectoryLayersRef.current.push(arrowLayerName)
+        mapRef.addLayer({
+          id: arrowLayerName,
+          type: 'symbol',
+          source: sourceName,
+          layout: {
+            'symbol-placement': 'line',
+            'symbol-spacing': 60,
+            'text-field': '▶',
+            'text-font': ['Noto Sans Regular'],
+            'text-size': 12,
+            'text-keep-upright': false,
+            'text-rotation-alignment': 'map',
+            'text-pitch-alignment': 'map',
+          },
+          paint: {
+            'text-color': feature.properties.color,
+            'text-opacity': 0.9,
+          },
+          filter: ['==', ['get', 'mmsi'], feature.properties.mmsi],
+        })
       })
     } catch (err) {
       console.error('[Trajectory] Error:', err)
@@ -251,6 +277,7 @@ export default function Console() {
       mmsi: layer.mmsi,
       color: layer.style.color,
       dashed: layer.style.dashArray !== null,
+      visible: layer.visible,
     }))
 
     updateMapTrajectories(vessels, map.current)
@@ -292,26 +319,49 @@ export default function Console() {
 
     // 高亮该轨迹线条（增加线宽和不透明度）
     trajectoryLayersRef.current.forEach((layerName) => {
-      map.current!.setPaintProperty(
-        layerName,
-        'line-width',
-        [
-          'case',
-          ['==', ['get', 'mmsi'], layer.mmsi],
-          6, // 高亮时的宽度
-          2, // 正常宽度
-        ]
-      )
-      map.current!.setPaintProperty(
-        layerName,
-        'line-opacity',
-        [
-          'case',
-          ['==', ['get', 'mmsi'], layer.mmsi],
-          1.0, // 高亮时的透明度
-          0.8, // 正常透明度
-        ]
-      )
+      if (layerName.startsWith('trajectory-layer-')) {
+        map.current!.setPaintProperty(
+          layerName,
+          'line-width',
+          [
+            'case',
+            ['==', ['get', 'mmsi'], layer.mmsi],
+            6, // 高亮时的宽度
+            2, // 正常宽度
+          ]
+        )
+        map.current!.setPaintProperty(
+          layerName,
+          'line-opacity',
+          [
+            'case',
+            ['==', ['get', 'mmsi'], layer.mmsi],
+            1.0, // 高亮时的透明度
+            0.8, // 正常透明度
+          ]
+        )
+      } else if (layerName.startsWith('trajectory-arrow-')) {
+        map.current!.setLayoutProperty(
+          layerName,
+          'text-size',
+          [
+            'case',
+            ['==', ['get', 'mmsi'], layer.mmsi],
+            18, // 高亮时的箭头大小
+            12, // 正常箭头大小
+          ]
+        )
+        map.current!.setPaintProperty(
+          layerName,
+          'text-opacity',
+          [
+            'case',
+            ['==', ['get', 'mmsi'], layer.mmsi],
+            1.0, // 高亮时的透明度
+            0.9, // 正常透明度
+          ]
+        )
+      }
     })
 
     // 3 秒后恢复高亮
@@ -319,8 +369,13 @@ export default function Console() {
       if (!map.current) return
       trajectoryLayersRef.current.forEach((layerName) => {
         try {
-          map.current!.setPaintProperty(layerName, 'line-width', 2)
-          map.current!.setPaintProperty(layerName, 'line-opacity', 0.8)
+          if (layerName.startsWith('trajectory-layer-')) {
+            map.current!.setPaintProperty(layerName, 'line-width', 2)
+            map.current!.setPaintProperty(layerName, 'line-opacity', 0.8)
+          } else if (layerName.startsWith('trajectory-arrow-')) {
+            map.current!.setLayoutProperty(layerName, 'text-size', 12)
+            map.current!.setPaintProperty(layerName, 'text-opacity', 0.9)
+          }
         } catch (e) {
           // Layer might not exist
         }
@@ -945,7 +1000,10 @@ export default function Console() {
       {layerManagerOpen && (
         <LayerManager
           refreshKey={dataVersion}
-          onClose={() => setLayerManagerOpen(false)}
+          onClose={() => {
+            setLayerManagerOpen(false)
+            setActiveLayers([])
+          }}
           onLayersChange={(layers) => setActiveLayers(layers)}
           onLayerFocus={(layerId) => setFocusedLayerId(layerId)}
         />

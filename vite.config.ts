@@ -16,6 +16,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: false,
+    watch: {
+      ignored: ['**/api/lib/**'],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Search, Layers, X } from 'lucide-react'
+import { Search, Layers, X, MoreVertical } from 'lucide-react'
 import { useLayerSearch } from '../hooks/useLayerSearch'
 import StyleSelector from './StyleSelector'
 
@@ -41,9 +41,16 @@ export default function LayerManager({
   const [styleSelector, setStyleSelector] = useState<{ layerId: string; isEdit: boolean } | null>(null)
   const [pendingLayer, setPendingLayer] = useState<MapLayer | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ layerId: string; y: number } | null>(null)
   const searchWorkerRef = useRef<Worker | null>(null)
   const activeScrollRef = useRef<HTMLDivElement>(null)
   const libraryScrollRef = useRef<HTMLDivElement>(null)
+  const onLayersChangeRef = useRef(onLayersChange)
+
+  // 保持回调引用最新，避免每次父组件渲染都重新加载图层
+  useEffect(() => {
+    onLayersChangeRef.current = onLayersChange
+  }, [onLayersChange])
   const { searchResults } = useLayerSearch(searchQuery, allLayers, searchWorkerRef)
 
   // 初始化 Worker
@@ -67,6 +74,17 @@ export default function LayerManager({
     const loadLayers = async () => {
       setLoading(true)
       try {
+        // 先加载已保存的样式；失败时不影响主数据加载
+        let stylesData: Record<number, LayerStyle> = {}
+        try {
+          const stylesResponse = await fetch('/api/styles')
+          if (stylesResponse.ok) {
+            stylesData = await stylesResponse.json()
+          }
+        } catch (e) {
+          console.warn('[LayerManager] Failed to load saved styles:', e)
+        }
+
         const response = await fetch('/api/tracks?page_size=100000000000000000')
         const data = await response.json()
 
@@ -75,6 +93,8 @@ export default function LayerManager({
 
           data.data.forEach((record: any) => {
             const mmsi = record.mmsi
+            const savedStyle = stylesData[mmsi]
+
             if (!vesselMap.has(mmsi)) {
               vesselMap.set(mmsi, {
                 id: mmsi.toString(),
@@ -82,8 +102,8 @@ export default function LayerManager({
                 name: `Vessel ${mmsi}`,
                 visible: false,
                 zIndex: 0,
-                style: {
-                  color: getRandomColor(),
+                style: savedStyle || {
+                  color: getLayerColor(mmsi),
                   width: 2,
                   opacity: 0.8,
                   dashArray: [5, 5],
@@ -104,6 +124,8 @@ export default function LayerManager({
               const activeIds: string[] = JSON.parse(savedActiveIds)
               const saved = layers.filter((l) => activeIds.includes(l.id))
               setActiveLayers(saved)
+              saveActiveLayers(saved)
+              onLayersChangeRef.current?.(saved)
             } catch (e) {
               console.warn('[LayerManager] Failed to restore saved layers:', e)
             }
@@ -138,9 +160,22 @@ export default function LayerManager({
     setStyleSelector({ layerId: layer.id, isEdit: true })
   }, [])
 
+  // 保存样式到后台
+  const saveStyleToBackend = async (mmsi: number, style: LayerStyle) => {
+    try {
+      await fetch('/api/styles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mmsi, style }),
+      })
+    } catch (e) {
+      console.warn('[LayerManager] Failed to save style to backend:', e)
+    }
+  }
+
   // 样式选择完成
   const handleStyleConfirm = useCallback(
-    (style: LayerStyle) => {
+    async (style: LayerStyle) => {
       if (!pendingLayer) return
 
       if (styleSelector?.isEdit) {
@@ -151,6 +186,7 @@ export default function LayerManager({
         setActiveLayers(newActiveLayers)
         saveActiveLayers(newActiveLayers)
         onLayersChange?.(newActiveLayers)
+        await saveStyleToBackend(pendingLayer.mmsi, style)
       } else {
         // 添加模式：添加新图层
         const newLayer = {
@@ -163,6 +199,7 @@ export default function LayerManager({
         setActiveLayers(newActiveLayers)
         saveActiveLayers(newActiveLayers)
         onLayersChange?.(newActiveLayers)
+        await saveStyleToBackend(newLayer.mmsi, style)
         setHighlightId(newLayer.id)
         onLayerFocus?.(newLayer.id)
         setTimeout(() => setHighlightId(null), 1500)
@@ -186,6 +223,19 @@ export default function LayerManager({
   )
 
 
+  // 切换图层显隐
+  const toggleVisibility = useCallback(
+    (layerId: string) => {
+      const newActiveLayers = activeLayers.map((l) =>
+        l.id === layerId ? { ...l, visible: !l.visible } : l
+      )
+      setActiveLayers(newActiveLayers)
+      saveActiveLayers(newActiveLayers)
+      onLayersChange?.(newActiveLayers)
+    },
+    [activeLayers, saveActiveLayers, onLayersChange]
+  )
+
   // 合并搜索结果（包括活跃和库）
   const getSearchResults = useCallback(() => {
     if (!searchQuery.trim()) return { active: [], library: [] }
@@ -202,6 +252,21 @@ export default function LayerManager({
 
   const { active: searchActiveResults, library: searchLibraryResults } = getSearchResults()
   const isSearching = searchQuery.trim().length > 0
+
+  // 点击外部或按 Escape 关闭右键菜单
+  useEffect(() => {
+    if (!contextMenu) return
+    const handleClick = () => setContextMenu(null)
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null)
+    }
+    document.addEventListener('click', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('click', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [contextMenu])
 
   return (
     <>
@@ -256,30 +321,60 @@ export default function LayerManager({
                     className={`group flex items-center gap-2 px-2 py-1.5 rounded transition-colors cursor-pointer ${
                       highlightId === layer.id
                         ? 'bg-yellow-100 ring-1 ring-yellow-400'
-                        : 'hover:bg-blue-50'
-                    }`}
+                        : layer.visible
+                          ? 'hover:bg-blue-50'
+                          : 'hover:bg-slate-100'
+                    } ${!layer.visible ? 'opacity-60' : ''}`}
                     onClick={() => onLayerFocus?.(layer.id)}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                      setContextMenu({ layerId: layer.id, y: rect.bottom + 5 })
+                    }}
                   >
                     <input
                       type="checkbox"
-                      checked={true}
-                      onChange={() => removeLayer(layer.id)}
+                      checked={layer.visible}
+                      onChange={(e) => {
+                        e.stopPropagation()
+                        toggleVisibility(layer.id)
+                      }}
                       className="w-3 h-3 cursor-pointer flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-700 truncate">
+                      <p className={`text-xs font-medium truncate ${
+                        layer.visible ? 'text-slate-700' : 'text-slate-400'
+                      }`}>
                         {layer.name}
                       </p>
                     </div>
                     <button
-                      onClick={() => handleEditStyle(layer)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleEditStyle(layer)
+                      }}
                       className="w-3 h-3 rounded-full flex-shrink-0 hover:ring-2 hover:ring-blue-400"
                       style={{ backgroundColor: layer.style.color }}
                       title="Edit style"
                     />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                        setContextMenu((prev) =>
+                          prev?.layerId === layer.id ? null : { layerId: layer.id, y: rect.bottom + 5 }
+                        )
+                      }}
+                      className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-slate-100 transition-opacity flex-shrink-0"
+                      title="More options"
+                    >
+                      <MoreVertical className="w-3 h-3 text-slate-500" />
+                    </button>
                   </div>
                 ))
               )}
+
             </div>
           </div>
 
@@ -398,11 +493,30 @@ export default function LayerManager({
           }}
         />
       )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 bg-white border border-slate-200 rounded-md shadow-lg py-1 min-w-[120px]"
+          style={{ top: contextMenu.y, right: 0 }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              removeLayer(contextMenu.layerId)
+              setContextMenu(null)
+            }}
+            className="w-full px-3 py-1.5 text-left text-xs text-red-600 hover:bg-slate-50 transition-colors"
+          >
+            Remove Layer
+          </button>
+        </div>
+      )}
     </>
   )
 }
 
-function getRandomColor(): string {
+function getLayerColor(mmsi: number): string {
   const colors = [
     '#FF6B6B',
     '#4ECDC4',
@@ -415,5 +529,8 @@ function getRandomColor(): string {
     '#F8B88B',
     '#82E0AA',
   ]
-  return colors[Math.floor(Math.random() * colors.length)]
+  const hash = String(mmsi).split('').reduce((acc, char) => {
+    return acc * 31 + char.charCodeAt(0)
+  }, 0)
+  return colors[Math.abs(hash) % colors.length]
 }
