@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Layers, Ship, MapPin, Navigation, Anchor, Clock } from 'lucide-react'
+import { ChevronRight, Ship, MapPin, Navigation, Anchor, Clock } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import compassIcon from '../assets/compass.png'
@@ -99,10 +99,10 @@ export default function Console() {
   const [aisSubmenuOpen, setAisSubmenuOpen] = useState(false)
   const toolsRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
-  const [chartVisible, setChartVisible] = useState(true)
   const [aisPlaybackOpen, setAisPlaybackOpen] = useState(false)
   const [dataManagerOpen, setDataManagerOpen] = useState(false)
   const [layerManagerOpen, setLayerManagerOpen] = useState(false)
+
   const trajectorySourceRef = useRef<string | null>(null)
   const trajectoryLayersRef = useRef<string[]>([])
   const trajectoryCoordinatesRef = useRef<Map<number, [number, number][]>>(new Map())
@@ -414,7 +414,7 @@ export default function Console() {
             s52Style.layers.forEach((layer: any) => {
               if (layer.id === 'background') return
               if (!m.getLayer(layer.id)) {
-                m.addLayer({ ...layer, layout: { visibility: chartVisible ? 'visible' : 'none', ...layer.layout } })
+                m.addLayer({ ...layer, layout: { visibility: 'visible', ...layer.layout } })
               }
             })
             console.log('[Map] S-52 chart layers added')
@@ -675,27 +675,7 @@ export default function Console() {
   }, [])
 
   // Toggle chart layer visibility
-  useEffect(() => {
-    if (!map.current) return
-    const chartLayerIds = [
-      'depth_areas-deep', 'depth_areas-medium', 'depth_areas-shallow', 'depth_areas-default',
-      'sea_areas', 'land_areas', 'rivers_area', 'fairways', 'anchorages',
-      'restricted_areas', 'berths', 'shoreline_construction', 'bridges',
-      'admin_areas', 'meta_coverage', 'coastline', 'depth_contours',
-      'depth_contours-label', 'fairways_line', 'rivers', 'roads', 'tunnels',
-      'pipelines', 'fences', 'radar_call', 'land_line', 'soundings',
-      'lights', 'lights-label', 'buoys', 'beacons', 'topmarks',
-      'obstructions', 'wrecks', 'landmarks', 'buildings', 'pilots',
-      'radar_stations', 'route_beacons', 'land_elevation', 'tidal_stations',
-      'tidal_w_stations', 'restricted_areas-outline', 'anchorages-outline',
-      'berths-outline', 'production_areas-outline', 'magvar', 'soundings-label',
-    ]
-    chartLayerIds.forEach((id) => {
-      if (map.current!.getLayer(id)) {
-        map.current!.setLayoutProperty(id, 'visibility', chartVisible ? 'visible' : 'none')
-      }
-    })
-  }, [chartVisible])
+  // ENC 图层常显，不再提供切换按钮
 
   // ── Update map ships layer based on playbackTime ──
   useEffect(() => {
@@ -870,19 +850,12 @@ export default function Console() {
               </div>
             )}
           </div>
-          <button
-            onClick={() => setChartVisible(!chartVisible)}
-            className={`flex cursor-default select-none items-center rounded-sm px-3 py-1 text-sm font-medium outline-none focus:bg-accent focus:text-accent-foreground ${chartVisible ? 'bg-accent text-accent-foreground' : ''}`}
-            title={chartVisible ? '隐藏海图' : '显示海图'}
-          >
-            <Layers className="h-4 w-4 mr-1" />
-            ENC
-          </button>
         </div>
       </div>
 
       {/* ── Full-screen Map ── */}
       <div ref={mapContainer} className="flex-1 min-h-0" />
+
 
       {/* ── Cursor Coordinates (bottom-right) ── */}
       {cursorCoords && (
