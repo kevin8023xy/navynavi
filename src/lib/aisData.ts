@@ -7,6 +7,8 @@ const DB_VERSION = 2; // Increment to force cache refresh
 const CSV_URL = '/data/ais.csv.gz';
 const WRITE_BATCH_SIZE = 5000;
 
+let loadPromise: Promise<void> | null = null;
+
 export interface AisRecord {
   mmsi: number;
   lat: number;
@@ -18,8 +20,6 @@ export interface AisRecord {
   timestamp: number;
   iso: string;
 }
-
-let loadPromise: Promise<void> | null = null;
 
 function openAisDB() {
   return openDB(DB_NAME, DB_VERSION, {
@@ -45,6 +45,43 @@ async function isCacheValid(db: any): Promise<boolean> {
   return typeof meta?.value === 'number' && meta.value > 0;
 }
 
+async function getFileMeta(): Promise<{
+  lastModified: string | null;
+  etag: string | null;
+}> {
+  try {
+    const res = await fetch(CSV_URL, {
+      method: 'HEAD',
+      cache: 'no-store',
+    });
+    return {
+      lastModified: res.headers.get('last-modified'),
+      etag: res.headers.get('etag'),
+    };
+  } catch (err) {
+    console.warn('[aisData] Failed to fetch file meta:', err);
+    return { lastModified: null, etag: null };
+  }
+}
+
+async function isIndexedDBCacheValid(db: any): Promise<boolean> {
+  const hasRecords = await isCacheValid(db);
+  if (!hasRecords) return false;
+
+  const fileMeta = await getFileMeta();
+  const cachedMeta = await db.get('meta', 'fileMeta');
+
+  // 如果拿不到服务器文件 meta，保守地认为缓存失效，重新拉取
+  if (!fileMeta.lastModified && !fileMeta.etag) {
+    return false;
+  }
+
+  return (
+    cachedMeta?.lastModified === fileMeta.lastModified &&
+    cachedMeta?.etag === fileMeta.etag
+  );
+}
+
 async function clearRecords(db: any) {
   const tx = db.transaction('records', 'readwrite');
   await tx.objectStore('records').clear();
@@ -55,6 +92,17 @@ async function writeMeta(db: any, count: number) {
   const tx = db.transaction('meta', 'readwrite');
   await tx.objectStore('meta').put({ key: 'recordsCount', value: count });
   await tx.done;
+}
+
+async function writeFileMeta(
+  db: any,
+  fileMeta: { lastModified: string | null; etag: string | null },
+) {
+  await db.put('meta', {
+    key: 'fileMeta',
+    lastModified: fileMeta.lastModified,
+    etag: fileMeta.etag,
+  });
 }
 
 function parseValue(value: string | undefined): number | null {
@@ -69,7 +117,12 @@ function parseRecord(row: Record<string, string>): AisRecord | null {
   const lat = parseFloat(row['Latitude']);
   const lng = parseFloat(row['Longitude']);
 
-  if (Number.isNaN(timestamp) || Number.isNaN(mmsi) || Number.isNaN(lat) || Number.isNaN(lng)) {
+  if (
+    Number.isNaN(timestamp) ||
+    Number.isNaN(mmsi) ||
+    Number.isNaN(lat) ||
+    Number.isNaN(lng)
+  ) {
     return null;
   }
 
@@ -89,17 +142,18 @@ function parseRecord(row: Record<string, string>): AisRecord | null {
 async function loadCsv(progress?: (percent: number) => void): Promise<void> {
   const db = await openAisDB();
 
-  if (await isCacheValid(db)) {
-    progress?.(100);
-    return;
-  }
-
+  await clearRecords(db);
   progress?.(5);
 
-  const res = await fetch(CSV_URL);
+  const res = await fetch(CSV_URL, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`Failed to fetch ${CSV_URL}: ${res.status}`);
   }
+
+  const fileMeta = {
+    lastModified: res.headers.get('last-modified'),
+    etag: res.headers.get('etag'),
+  };
 
   progress?.(15);
 
@@ -114,8 +168,6 @@ async function loadCsv(progress?: (percent: number) => void): Promise<void> {
   }
 
   progress?.(25);
-
-  await clearRecords(db);
 
   const records: AisRecord[] = [];
   const estimatedTotal = 1867775;
@@ -160,16 +212,32 @@ async function loadCsv(progress?: (percent: number) => void): Promise<void> {
   }
 
   await writeMeta(db, records.length);
+  await writeFileMeta(db, fileMeta);
   progress?.(100);
 }
 
-export async function loadAisData(progress?: (percent: number) => void): Promise<void> {
-  if (!loadPromise) {
-    loadPromise = loadCsv(progress).catch((err: unknown) => {
+export async function loadAisData(
+  progress?: (percent: number) => void,
+): Promise<void> {
+  // 如果已有进行中的加载，等待它完成
+  if (loadPromise) return loadPromise;
+
+  const db = await openAisDB();
+  const cached = await isIndexedDBCacheValid(db);
+  if (cached) {
+    progress?.(100);
+    return;
+  }
+
+  loadPromise = loadCsv(progress)
+    .finally(() => {
+      loadPromise = null;
+    })
+    .catch((err: unknown) => {
       loadPromise = null;
       throw err;
     });
-  }
+
   return loadPromise;
 }
 
