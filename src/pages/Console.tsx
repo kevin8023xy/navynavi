@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Ship, MapPin, Navigation, Anchor, Clock } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import compassIcon from '../assets/compass.png'
 import logo from '../assets/logo.webp'
+import { groupByMmsi, interpolateRecord, type InterpolatableRecord } from '../lib/interpolate'
 import AisPlayback from '../components/AisPlayback'
 import DataManager from '../components/DataManager'
 import LayerManager from '../components/LayerManager'
@@ -78,6 +79,33 @@ function formatUtcTime(ts: number) {
   return `${d.toLocaleString('en-US', opts)} UTC`
 }
 
+function getShipRotation(record: InterpolatableRecord): number {
+  if (record.heading != null && record.heading !== 511) return record.heading
+  if (record.cog != null && record.cog !== 511) return record.cog
+  return 0
+}
+
+function createShipMarkerElement(): HTMLElement {
+  const el = document.createElement('div')
+  el.style.width = '24px'
+  el.style.height = '24px'
+  el.style.display = 'flex'
+  el.style.alignItems = 'center'
+  el.style.justifyContent = 'center'
+  el.style.pointerEvents = 'auto'
+  el.style.cursor = 'pointer'
+
+  const img = document.createElement('img')
+  img.src = compassIcon
+  img.style.width = '100%'
+  img.style.height = '100%'
+  img.style.objectFit = 'contain'
+  img.style.pointerEvents = 'none'
+  el.appendChild(img)
+
+  return el
+}
+
 interface HoverShip {
   x: number
   y: number
@@ -142,11 +170,105 @@ export default function Console() {
   // Playback data surfaced from AisPlayback module for map rendering
   const [allTracks, setAllTracks] = useState<any[]>([])
   const [playbackTime, setPlaybackTime] = useState<number>(0)
-  const [intervalSec, setIntervalSec] = useState(10)
-  const [iconLoaded, setIconLoaded] = useState(false)
   const [cursorCoords, setCursorCoords] = useState<{ lng: number; lat: number } | null>(null)
   const [hoverShip, setHoverShip] = useState<HoverShip | null>(null)
-  const shipListenersAdded = useRef(false)
+
+  // ── Custom DOM markers for active ships (Plan C) ──
+  const shipMarkers = useRef<Map<number, maplibregl.Marker>>(new Map())
+  const shipRecordsRef = useRef<Map<number, InterpolatableRecord>>(new Map())
+  const shipsSymbolLayerRemoved = useRef(false)
+  const shipsByMmsi = useMemo(() => groupByMmsi(allTracks as InterpolatableRecord[]), [allTracks])
+
+  // Update marker positions/rotations as playback time advances; add/remove markers as the window changes.
+  useEffect(() => {
+    if (!map.current) return
+
+    const m = map.current
+    const markers = shipMarkers.current
+    const activeMmsis = new Set<number>()
+
+
+    // Remove legacy symbol layer from previous approaches if it still exists
+    if (!shipsSymbolLayerRemoved.current) {
+      try {
+        if (m.getLayer('ships-points')) m.removeLayer('ships-points')
+        if (m.getSource('ships')) m.removeSource('ships')
+      } catch (e) {
+        // ignore
+      }
+      shipsSymbolLayerRemoved.current = true
+    }
+
+    for (const [mmsi, records] of shipsByMmsi) {
+      const r = interpolateRecord(records, playbackTime)
+      if (!r) continue
+
+      activeMmsis.add(mmsi)
+      shipRecordsRef.current.set(mmsi, r)
+      let marker = markers.get(mmsi)
+      if (!marker) {
+        const el = createShipMarkerElement()
+        marker = new maplibregl.Marker({
+          element: el,
+          anchor: 'center',
+          rotationAlignment: 'map',
+          pitchAlignment: 'map',
+        })
+          .setLngLat([r.lng, r.lat])
+          .setRotation(getShipRotation(r))
+          .addTo(m)
+        markers.set(mmsi, marker)
+
+        el.addEventListener('mouseenter', () => {
+          m.getCanvas().style.cursor = 'pointer'
+        })
+        el.addEventListener('mouseleave', () => {
+          m.getCanvas().style.cursor = ''
+          setHoverShip(null)
+        })
+        el.addEventListener('mousemove', (e) => {
+          const record = shipRecordsRef.current.get(mmsi)
+          if (!record) return
+          setHoverShip({
+            x: e.clientX,
+            y: e.clientY,
+            mmsi: record.mmsi,
+            lat: record.lat,
+            lng: record.lng,
+            sog: record.sog ?? null,
+            cog: record.cog ?? null,
+            heading: record.heading ?? null,
+            status: record.status ?? null,
+            timestamp: record.timestamp,
+          })
+        })
+      } else {
+        marker.setLngLat([r.lng, r.lat])
+        marker.setRotation(getShipRotation(r))
+      }
+    }
+
+    // Remove markers for ships that are no longer in the window
+    for (const [mmsi, marker] of markers) {
+      if (!activeMmsis.has(mmsi)) {
+        marker.remove()
+        markers.delete(mmsi)
+        shipRecordsRef.current.delete(mmsi)
+      }
+    }
+
+  }, [shipsByMmsi, playbackTime])
+
+  // Remove all markers on unmount
+  useEffect(() => {
+    return () => {
+      for (const marker of shipMarkers.current.values()) {
+        marker.remove()
+      }
+      shipMarkers.current.clear()
+      shipRecordsRef.current.clear()
+    }
+  }, [])
 
   // ── Update map trajectories ──
   const updateMapTrajectories = useCallback(async (vessels: Array<{ mmsi: number; color: string; dashed: boolean; visible: boolean }>, mapRef: maplibregl.Map | null) => {
@@ -507,17 +629,7 @@ export default function Console() {
           console.warn('[Map] Failed to add soundings:', e)
         }
 
-        // 加载船舶图标（用 Image 对象更可靠）
-        const img = new Image()
-        img.onload = () => {
-          if (!m.hasImage('ship-icon')) {
-            m.addImage('ship-icon', img)
-            console.log('[Map] Ship icon loaded:', img.width, 'x', img.height)
-          }
-          setIconLoaded(true)
-        }
-        img.onerror = () => console.warn('[Map] Failed to load ship icon')
-        img.src = compassIcon
+
 
         const tilesetIds = [
           '9zmxcsih', '9hg1rjmh', 'aodinnmf', '20gt82m7',
@@ -732,79 +844,7 @@ export default function Console() {
   // Toggle chart layer visibility
   // ENC 图层常显，不再提供切换按钮
 
-  // ── Update map ships layer based on playbackTime ──
-  useEffect(() => {
-    if (!map.current || allTracks.length === 0 || !iconLoaded) return
-
-    const currentEnd = playbackTime + Number(intervalSec)
-    const active = allTracks.filter(
-      (t) => t.timestamp >= playbackTime && t.timestamp < currentEnd
-    )
-
-    const geojson: any = {
-      type: 'FeatureCollection',
-      features: active.map((r) => ({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [r.lng, r.lat],
-        },
-        properties: {
-          mmsi: r.mmsi,
-          sog: r.sog,
-          cog: r.cog,
-          heading: r.heading,
-          status: r.status,
-          timestamp: r.timestamp,
-          lat: r.lat,
-          lng: r.lng,
-        },
-      })),
-    }
-
-    const source = map.current.getSource('ships') as any
-    if (source) {
-      source.setData(geojson)
-    } else {
-      map.current.addSource('ships', {
-        type: 'geojson',
-        data: geojson,
-      })
-      map.current.addLayer({
-        id: 'ships-points',
-        type: 'symbol',
-        source: 'ships',
-        layout: {
-          'icon-image': 'ship-icon',
-          'icon-size': 0.04,
-          'icon-allow-overlap': true,
-          'icon-rotate': ['coalesce', ['case', ['==', ['get', 'cog'], 511], 0, ['get', 'cog']], 0],
-          'icon-rotation-alignment': 'map',
-        },
-      })
-
-      if (!shipListenersAdded.current) {
-        const m = map.current
-        m.on('mouseenter', 'ships-points', () => {
-          m.getCanvas().style.cursor = 'pointer'
-        })
-        m.on('mouseleave', 'ships-points', () => {
-          m.getCanvas().style.cursor = ''
-          setHoverShip(null)
-        })
-        m.on('mousemove', 'ships-points', (e) => {
-          const f = e.features?.[0]
-          if (!f) return
-          setHoverShip({
-            x: e.point.x,
-            y: e.point.y,
-            ...(f.properties as any),
-          })
-        })
-        shipListenersAdded.current = true
-      }
-    }
-  }, [playbackTime, allTracks, intervalSec, iconLoaded])
+  // (ships layer logic moved above: shipsGeoJson + data/filter effects)
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#c4dced]">
@@ -981,7 +1021,7 @@ export default function Console() {
         <AisPlayback
           onTracksChange={setAllTracks}
           onPlaybackTimeChange={setPlaybackTime}
-          onIntervalChange={setIntervalSec}
+          onIntervalChange={() => {}}
           onError={setError}
           onClose={() => setAisPlaybackOpen(false)}
         />

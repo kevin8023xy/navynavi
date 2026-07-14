@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 
 import { loadAisData, queryTracks } from '../lib/aisData'
+import { interpolateWindow, groupByMmsi, interpolateRecord, type InterpolatableRecord } from '../lib/interpolate'
 
 const PLAYBACK_SPEEDS = ['0.5x', '1x', '2x', '5x', '10x', '50x', '100x']
 
@@ -45,11 +46,14 @@ export default function AisPlayback({
   const [allTracks, setAllTracks] = useState<any[]>([])
   const [playbackTime, setPlaybackTime] = useState<number>(0)
   const [emptyMessage, setEmptyMessage] = useState<string | null>(null)
+  const [isInterpolating, setIsInterpolating] = useState(false)
 
   const startTimeRef = useRef<HTMLInputElement>(null)
   const endTimeRef = useRef<HTMLInputElement>(null)
   const speedRef = useRef<HTMLDivElement>(null)
   const playbackTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const rawTracksRef = useRef<InterpolatableRecord[]>([])
+  const lastLogTimeRef = useRef(0)
 
 
   const startUnix = Math.floor(new Date(startTime).getTime() / 1000)
@@ -117,6 +121,34 @@ export default function AisPlayback({
     }
   }, [isPlaying, speed, intervalSec, endUnix])
 
+
+  // ── Real-time interpolation with distribution logging ──
+  useEffect(() => {
+    if (rawTracksRef.current.length === 0) return
+
+    const byMmsi = groupByMmsi(rawTracksRef.current)
+    const currentTimePoints: any[] = []
+
+    for (const [mmsi, records] of byMmsi) {
+      const firstTime = records[0].timestamp
+      const lastTime = records[records.length - 1].timestamp
+
+      if (playbackTime >= firstTime && playbackTime <= lastTime) {
+        const r = interpolateRecord(records, playbackTime)
+        if (r) currentTimePoints.push(r)
+      }
+    }
+
+    // Log every 300 seconds of playback
+    if (playbackTime - lastLogTimeRef.current >= 300) {
+      console.log('[Distribution] Time:', new Date(playbackTime * 1000).toLocaleTimeString(),
+        '| ships shown:', currentTimePoints.length, '| total MMSI:', byMmsi.size)
+      lastLogTimeRef.current = playbackTime
+    }
+
+    setAllTracks(currentTimePoints)
+  }, [playbackTime])
+
   const handleQueryData = async () => {
     setIsPlaying(false)
     setIsLoading(true)
@@ -124,6 +156,7 @@ export default function AisPlayback({
     onError?.(null)
     setEmptyMessage(null)
     setAllTracks([])
+    rawTracksRef.current = []
 
     const s = Math.floor(new Date(startTime).getTime() / 1000)
     const e = Math.floor(new Date(endTime).getTime() / 1000)
@@ -131,14 +164,19 @@ export default function AisPlayback({
     try {
       await loadAisData((progress) => setLoadProgress(progress))
       const data = await queryTracks(s, e)
-      setAllTracks(data)
-      setPlaybackTime(s)
+      console.log('[Query] Loaded records:', data.length, 'from', new Date(s * 1000), 'to', new Date(e * 1000))
+      rawTracksRef.current = data
       if (data.length === 0) {
         setEmptyMessage(
           `No AIS records found between ${formatTime(startTime)} and ${formatTime(endTime)}.`,
         )
+      } else {
+        // Set playback time to the first record's timestamp
+        const firstTime = data[0].timestamp
+        setPlaybackTime(firstTime)
       }
     } catch (err: any) {
+      console.error('[Query] Error:', err)
       onError?.(err?.message || 'Failed to load AIS data')
     } finally {
       setIsLoading(false)
@@ -326,7 +364,7 @@ export default function AisPlayback({
         </button>
         <button
           onClick={handlePlayPause}
-          disabled={allTracks.length === 0}
+          disabled={allTracks.length === 0 || isInterpolating}
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground hover:bg-primary h-9 py-2 px-6 bg-primary shadow-2xl"
           title={isPlaying ? 'Pause' : 'Play'}
         >
@@ -397,6 +435,13 @@ export default function AisPlayback({
               style={{ left: `calc(${Math.min(loadProgress, 100)}% - 8px)` }}
             />
           </div>
+        </div>
+      )}
+
+      {isInterpolating && (
+        <div className="mb-3 flex items-center gap-2 text-xs text-blue-700">
+          <span className="inline-block w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          Interpolating segment…
         </div>
       )}
 
