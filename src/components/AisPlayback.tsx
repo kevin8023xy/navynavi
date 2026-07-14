@@ -64,6 +64,14 @@ export default function AisPlayback({
       ? Math.min(100, Math.max(0, ((playbackTime - startUnix) / totalDuration) * 100))
       : 0
 
+  // Debug
+  useEffect(() => {
+    if (allTracks.length === 0 || playbackTime === 0) return
+    console.log('[Progress] startTime:', formatTime(startTime), 'endTime:', formatTime(endTime),
+      '| startUnix:', startUnix, 'endUnix:', endUnix, 'totalDuration:', totalDuration,
+      '| playbackTime:', playbackTime, '| allTracks:', allTracks.length, '| percent:', playbackPercent.toFixed(1))
+  }, [allTracks.length, playbackTime, startUnix, endUnix, totalDuration, playbackPercent, startTime, endTime])
+
   useEffect(() => {
     onPlaybackTimeChange(playbackTime)
   }, [playbackTime, onPlaybackTimeChange])
@@ -171,8 +179,8 @@ export default function AisPlayback({
           `No AIS records found between ${formatTime(startTime)} and ${formatTime(endTime)}.`,
         )
       } else {
-        // Set playback time to the first record's timestamp
-        const firstTime = data[0].timestamp
+        // Set playback time to the earliest record's timestamp
+        const firstTime = Math.min(...data.map(r => r.timestamp))
         setPlaybackTime(firstTime)
       }
     } catch (err: any) {
@@ -451,27 +459,29 @@ export default function AisPlayback({
         </div>
       )}
 
-      {/* Playback progress - draggable */}
-      {allTracks.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium">{formatPlaybackTime(playbackTime)}</span>
-            <span className="text-xs">{Math.round(playbackPercent)}%</span>
-          </div>
-          <input
-            type="range"
-            min={startUnix}
-            max={endUnix}
-            step={intervalSec}
-            value={playbackTime}
-            onChange={(e) => {
-              const v = parseInt(e.target.value, 10)
-              setPlaybackTime(v)
-            }}
-            className="w-full h-1.5 cursor-pointer accent-primary"
-          />
+      {/* Playback progress - always visible */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium">{formatPlaybackTime(playbackTime)}</span>
+          <span className="text-xs">{Math.round(playbackPercent)}%</span>
         </div>
-      )}
+        <input
+          type="range"
+          min={startUnix}
+          max={endUnix}
+          step={intervalSec}
+          value={playbackTime}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10)
+            setPlaybackTime(v)
+          }}
+          className="w-full h-1.5 cursor-pointer accent-primary"
+          disabled={allTracks.length === 0}
+        />
+        {allTracks.length === 0 && (
+          <div className="text-xs text-slate-500 text-center">No ships at this time</div>
+        )}
+      </div>
 
     </div>
   )
