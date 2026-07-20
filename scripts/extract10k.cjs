@@ -10,7 +10,7 @@ const CSV_PATH = path.join(
   'output',
   'merged_feichang_ships_2021-10-01_2021-11-30.csv.gz',
 );
-const OUT_PATH = path.join(PROJECT_ROOT, 'api', 'lib', 'data_10k.js');
+const OUT_PATH = path.join(PROJECT_ROOT, 'lib', 'api', 'data_10k.js');
 const TARGET_COUNT = 10000;
 
 function main() {

@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const STYLES_FILE = path.join(__dirname, 'lib', 'layer-styles.json');
+const STYLES_FILE = path.join(__dirname, '..', 'lib', 'api', 'layer-styles.json');
 
 function loadStyles() {
   if (!fs.existsSync(STYLES_FILE)) {

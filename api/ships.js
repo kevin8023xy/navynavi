@@ -1,6 +1,6 @@
 'use strict';
 
-const { getShipsLatest } = require('./lib/data');
+const { getShipsLatest } = require('../lib/api/data');
 
 module.exports = function handler(req, res) {
   console.log('[ships] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });

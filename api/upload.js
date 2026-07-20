@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { execSync } = require('child_process');
-const { invalidateCache } = require('./lib/data');
+const { invalidateCache } = require('../lib/api/data');
 
 function parseCsvLines(csvText) {
   const lines = csvText.trim().split(/\r?\n/).filter((l) => l.trim());

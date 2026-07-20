@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-const { invalidateCache } = require('./lib/data');
+const { invalidateCache } = require('../lib/api/data');
 
 const handler = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,7 +22,7 @@ const handler = async (req, res) => {
     const projectRoot = process.cwd();
     const outputDir = path.resolve(projectRoot, 'output');
     const csvPath = path.join(outputDir, 'merged_feichang_ships_2021-10-01_2021-11-30.csv.gz');
-    const jsonPath = path.join(projectRoot, 'api', 'lib', 'record1.json');
+    const jsonPath = path.join(projectRoot, 'lib', 'api', 'record1.json');
 
     if (!fs.existsSync(csvPath)) {
       return res.status(404).json({ error: 'CSV file not found' });

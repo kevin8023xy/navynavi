@@ -43,5 +43,5 @@ output/*.parquet
 output/*.csv
 
 # Large data files
-api/lib/record1.json
+lib/api/record1.json
 

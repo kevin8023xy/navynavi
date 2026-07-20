@@ -1,6 +1,6 @@
 'use strict';
 
-const { getAllRecords } = require('./lib/data');
+const { getAllRecords } = require('../lib/api/data');
 
 module.exports = function handler(req, res) {
   console.log('[health] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });

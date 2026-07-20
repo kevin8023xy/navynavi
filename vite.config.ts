@@ -17,7 +17,7 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     watch: {
-      ignored: ['**/api/lib/**'],
+      ignored: ['**/lib/api/**'],
     },
     proxy: {
       '/api': {

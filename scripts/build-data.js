@@ -12,7 +12,7 @@ const CSV_PATH = path.resolve(
   'output',
   'merged_feichang_ships_2021-10-01_2021-11-30.csv.gz',
 );
-const JSON_PATH = path.resolve(projectRoot, 'api', 'lib', 'record1.json');
+const JSON_PATH = path.resolve(projectRoot, 'lib', 'api', 'record1.json');
 
 function getLimit() {
   const env = process.env.RECORD_LIMIT;

@@ -1,6 +1,6 @@
 'use strict';
 
-const { queryTracks } = require('./lib/data');
+const { queryTracks } = require('../lib/api/data');
 
 module.exports = function handler(req, res) {
   console.log('[tracks] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });

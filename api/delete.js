@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { spawn } = require('child_process');
-const { invalidateCache } = require('./lib/data');
+const { invalidateCache } = require('../lib/api/data');
 
 const handler = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
