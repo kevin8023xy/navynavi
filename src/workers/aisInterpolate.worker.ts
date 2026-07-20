@@ -1,3 +1,5 @@
+import { MAX_REPORT_AGE } from '../lib/interpolate'
+
 // Web Worker for segmented AIS interpolation
 // Computes dense interpolated points for a playback window without blocking UI.
 
@@ -23,6 +25,7 @@ interface InterpolateMessage {
   interval: number
   minTime: number
   maxTime: number
+  maxReportAge: number
 }
 
 function lerp(
@@ -48,12 +51,22 @@ function lerpAngle(
   return a + (shortestAngle(a, b) - a) * t
 }
 
-function interpolateRecord(records: AisRecord[], targetTime: number): AisRecord | null {
+function interpolateRecord(records: AisRecord[], targetTime: number, maxReportAge: number): AisRecord | null {
   if (records.length === 0) return null
-  if (records.length === 1 || targetTime <= records[0].timestamp) return records[0]
 
+  // Single-report vessel: only visible within maxReportAge of its one report.
+  if (records.length === 1) {
+    const r = records[0]
+    return Math.abs(r.timestamp - targetTime) <= maxReportAge ? r : null
+  }
+
+  const first = records[0]
   const last = records[records.length - 1]
-  if (targetTime >= last.timestamp) return last
+
+  // Only emit the vessel when the target time is within its actual reported track.
+  if (targetTime < first.timestamp || targetTime > last.timestamp) return null
+  if (targetTime === first.timestamp) return first
+  if (targetTime === last.timestamp) return last
 
   let lo = 0
   let hi = records.length - 1
@@ -69,6 +82,13 @@ function interpolateRecord(records: AisRecord[], targetTime: number): AisRecord 
   const prev = records[lo]
   const next = records[hi]
   if (prev.timestamp === next.timestamp) return prev
+
+  // Unified rule: hide vessel if nearest real report is older than maxReportAge.
+  const nearestDelta = Math.min(
+    Math.abs(prev.timestamp - targetTime),
+    Math.abs(next.timestamp - targetTime)
+  )
+  if (nearestDelta > maxReportAge) return null
 
   const ratio = (targetTime - prev.timestamp) / (next.timestamp - prev.timestamp)
 
@@ -88,12 +108,13 @@ function interpolateSegment(
   records: AisRecord[],
   startTime: number,
   endTime: number,
-  interval: number
+  interval: number,
+  maxReportAge: number
 ): AisRecord[] {
   if (records.length === 0 || startTime > endTime || interval <= 0) return []
   const result: AisRecord[] = []
   for (let t = startTime; t <= endTime; t += interval) {
-    const r = interpolateRecord(records, t)
+    const r = interpolateRecord(records, t, maxReportAge)
     if (r) result.push(r)
   }
   return result
@@ -112,7 +133,7 @@ function groupByMmsi(records: AisRecord[]): Map<number, AisRecord[]> {
 }
 
 self.onmessage = ({ data }: MessageEvent<InterpolateMessage>) => {
-  const { records, centerTime, windowBehind, windowAhead, interval, minTime, maxTime, requestId } = data
+  const { records, centerTime, windowBehind, windowAhead, interval, minTime, maxTime, maxReportAge = MAX_REPORT_AGE, requestId } = data
 
   const startTime = Math.max(minTime, centerTime - windowBehind)
   const endTime = Math.min(maxTime, centerTime + windowAhead)
@@ -121,7 +142,7 @@ self.onmessage = ({ data }: MessageEvent<InterpolateMessage>) => {
   const interpolated: AisRecord[] = []
 
   for (const [, track] of byMmsi) {
-    interpolated.push(...interpolateSegment(track, startTime, endTime, interval))
+    interpolated.push(...interpolateSegment(track, startTime, endTime, interval, maxReportAge))
   }
 
   interpolated.sort((a, b) => a.timestamp - b.timestamp)

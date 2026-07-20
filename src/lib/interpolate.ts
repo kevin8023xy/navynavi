@@ -10,6 +10,8 @@ export interface InterpolatableRecord {
   [key: string]: any
 }
 
+export const MAX_REPORT_AGE = 5 * 60 // seconds — vessel hidden if no report within this window
+
 function lerp(a: number | null | undefined, b: number | null | undefined, t: number): number | null {
   if (a == null || b == null) return a ?? b ?? null
   return a + (b - a) * t
@@ -30,10 +32,20 @@ export function interpolateRecord(
   targetTime: number
 ): InterpolatableRecord | null {
   if (records.length === 0) return null
-  if (records.length === 1 || targetTime <= records[0].timestamp) return records[0]
 
+  // Single-report vessel: only visible within MAX_REPORT_AGE of its one report.
+  if (records.length === 1) {
+    const r = records[0]
+    return Math.abs(r.timestamp - targetTime) <= MAX_REPORT_AGE ? r : null
+  }
+
+  const first = records[0]
   const last = records[records.length - 1]
-  if (targetTime >= last.timestamp) return last
+
+  // Only show the vessel when playback time is within its actual reported track.
+  if (targetTime < first.timestamp || targetTime > last.timestamp) return null
+  if (targetTime === first.timestamp) return first
+  if (targetTime === last.timestamp) return last
 
   // Binary search for surrounding records
   let lo = 0
@@ -50,6 +62,13 @@ export function interpolateRecord(
   const prev = records[lo]
   const next = records[hi]
   if (prev.timestamp === next.timestamp) return prev
+
+  // Unified rule: hide vessel if nearest real report is older than MAX_REPORT_AGE.
+  const nearestDelta = Math.min(
+    Math.abs(prev.timestamp - targetTime),
+    Math.abs(next.timestamp - targetTime)
+  )
+  if (nearestDelta > MAX_REPORT_AGE) return null
 
   const ratio = (targetTime - prev.timestamp) / (next.timestamp - prev.timestamp)
 
