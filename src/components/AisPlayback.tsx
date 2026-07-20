@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 
 import { loadAisData, queryTracks } from '../lib/aisData'
-import { interpolateWindow, groupByMmsi, interpolateRecord, type InterpolatableRecord } from '../lib/interpolate'
+import { groupByMmsi, interpolateRecord, type InterpolatableRecord } from '../lib/interpolate'
 
 const PLAYBACK_SPEEDS = ['0.5x', '1x', '2x', '5x', '10x', '50x', '100x']
 
@@ -46,7 +46,6 @@ export default function AisPlayback({
   const [allTracks, setAllTracks] = useState<any[]>([])
   const [playbackTime, setPlaybackTime] = useState<number>(0)
   const [emptyMessage, setEmptyMessage] = useState<string | null>(null)
-  const [isInterpolating, setIsInterpolating] = useState(false)
 
   const startTimeRef = useRef<HTMLInputElement>(null)
   const endTimeRef = useRef<HTMLInputElement>(null)
@@ -137,7 +136,7 @@ export default function AisPlayback({
     const byMmsi = groupByMmsi(rawTracksRef.current)
     const currentTimePoints: any[] = []
 
-    for (const [mmsi, records] of byMmsi) {
+    for (const records of byMmsi.values()) {
       const firstTime = records[0].timestamp
       const lastTime = records[records.length - 1].timestamp
 
@@ -372,7 +371,7 @@ export default function AisPlayback({
         </button>
         <button
           onClick={handlePlayPause}
-          disabled={allTracks.length === 0 || isInterpolating}
+          disabled={allTracks.length === 0}
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground hover:bg-primary h-9 py-2 px-6 bg-primary shadow-2xl"
           title={isPlaying ? 'Pause' : 'Play'}
         >
@@ -443,13 +442,6 @@ export default function AisPlayback({
               style={{ left: `calc(${Math.min(loadProgress, 100)}% - 8px)` }}
             />
           </div>
-        </div>
-      )}
-
-      {isInterpolating && (
-        <div className="mb-3 flex items-center gap-2 text-xs text-blue-700">
-          <span className="inline-block w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          Interpolating segment…
         </div>
       )}
 
