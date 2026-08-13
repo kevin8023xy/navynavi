@@ -1,14 +1,15 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Ship, MapPin, Navigation, Anchor, Clock } from 'lucide-react'
+import { ChevronRight, Ship, MapPin, Navigation, Anchor, Clock, X } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import compassIcon from '../assets/compass.png'
 import logo from '../assets/logo.webp'
-import { groupByMmsi, interpolateRecord, type InterpolatableRecord } from '../lib/interpolate'
+import { groupByMmsi, interpolateRecord, computeFieldTrust, type InterpolatableRecord } from '../lib/interpolate'
 import AisPlayback from '../components/AisPlayback'
 import DataManager from '../components/DataManager'
 import LayerManager from '../components/LayerManager'
+import StatsPanel from '../components/StatsPanel'
 import type { MapLayer } from '../components/LayerManager'
 
 const TOOLS_MENU = [
@@ -80,6 +81,11 @@ function formatUtcTime(ts: number) {
 }
 
 function getShipRotation(record: InterpolatableRecord): number {
+  // 优先使用插值器写入的 headingResolved：它已对 COG/HDG 都做了"与实际运动方向
+  // 偏差 > 45° 即视为不可信"的交叉校验（见 interpolate.ts resolveHeading），
+  // 不再依赖"HDG 优先还是 COG 优先"的固定策略。
+  // 兜底兼容旧数据（无 headingResolved 字段）：HDG 优先 → COG → 0。
+  if (record.headingResolved != null) return record.headingResolved
   if (record.heading != null && record.heading !== 511) return record.heading
   if (record.cog != null && record.cog !== 511) return record.cog
   return 0
@@ -130,6 +136,7 @@ export default function Console() {
   const [aisPlaybackOpen, setAisPlaybackOpen] = useState(false)
   const [dataManagerOpen, setDataManagerOpen] = useState(false)
   const [layerManagerOpen, setLayerManagerOpen] = useState(false)
+  const [statsPanelOpen, setStatsPanelOpen] = useState(false)
 
   const trajectorySourceRef = useRef<string | null>(null)
   const trajectoryLayersRef = useRef<string[]>([])
@@ -172,12 +179,28 @@ export default function Console() {
   const [playbackTime, setPlaybackTime] = useState<number>(0)
   const [cursorCoords, setCursorCoords] = useState<{ lng: number; lat: number } | null>(null)
   const [hoverShip, setHoverShip] = useState<HoverShip | null>(null)
+  // 点击地图矢量要素后展示其属性
+  const [clickedFeature, setClickedFeature] = useState<{
+    lng: number
+    lat: number
+    layerId: string
+    sourceId: string
+    geometryType: string
+    properties: Record<string, unknown>
+  } | null>(null)
 
   // ── Custom DOM markers for active ships (Plan C) ──
   const shipMarkers = useRef<Map<number, maplibregl.Marker>>(new Map())
   const shipRecordsRef = useRef<Map<number, InterpolatableRecord>>(new Map())
   const shipsSymbolLayerRemoved = useRef(false)
   const shipsByMmsi = useMemo(() => groupByMmsi(allTracks as InterpolatableRecord[]), [allTracks])
+  // 全船级 COG/HDG 信任度：基于各船所有航行段中位数偏差判别，避免单点 45° 阈值漏判
+  // 整船字段坏掉的船（如 412208450 整船 HDG=0、412001590 整船 COG 偏 ~270°）。
+  const trustByMmsi = useMemo(() => {
+    const map = new Map<number, ReturnType<typeof computeFieldTrust>>()
+    for (const [mmsi, records] of shipsByMmsi) map.set(mmsi, computeFieldTrust(records))
+    return map
+  }, [shipsByMmsi])
 
   // Update marker positions/rotations as playback time advances; add/remove markers as the window changes.
   useEffect(() => {
@@ -200,7 +223,7 @@ export default function Console() {
     }
 
     for (const [mmsi, records] of shipsByMmsi) {
-      const r = interpolateRecord(records, playbackTime)
+      const r = interpolateRecord(records, playbackTime, undefined, trustByMmsi.get(mmsi))
       if (!r) continue
 
       activeMmsis.add(mmsi)
@@ -691,27 +714,11 @@ export default function Console() {
             console.warn('[Map] Failed to load custom tilesets:', err)
           })
 
-        // 添加自定义 line1 线段（第二条线：#F2D0E8）
+        // 添加自定义 line1-2 线段（第二条线：#F2D0E8），与后端统计共用同一份 geojson
         try {
           m.addSource('line1-2', {
             type: 'geojson',
-            data: {
-              type: 'FeatureCollection',
-              features: [
-                {
-                  type: 'Feature',
-                  properties: {},
-                  geometry: {
-                    type: 'LineString',
-                    coordinates: [
-                      [121.864398, 40.302282],
-                      [121.923241, 40.312429],
-                      [121.991482, 40.307805],
-                    ],
-                  },
-                },
-              ],
-            },
+            data: '/data/line1-2.geojson',
           })
           m.addLayer({
             id: 'line1-2-line',
@@ -813,6 +820,34 @@ export default function Console() {
           console.warn('[Map] Failed to add zone polygon:', e)
         }
 
+        // 点击地图矢量要素 → 查询属性并展示（排除 background 底图）
+        m.on('click', (e) => {
+          const hits = m.queryRenderedFeatures(e.point).filter(
+            (f) => f.layer && f.layer.type !== 'background',
+          )
+          if (hits.length === 0) {
+            setClickedFeature(null)
+            return
+          }
+          // 取最上层（数组首项）命中要素
+          const f = hits[0]
+          setClickedFeature({
+            lng: e.lngLat.lng,
+            lat: e.lngLat.lat,
+            layerId: f.layer ? f.layer.id : 'unknown',
+            sourceId: f.source || 'unknown',
+            geometryType: f.geometry ? f.geometry.type : 'unknown',
+            properties: (f.properties as Record<string, unknown>) || {},
+          })
+        })
+
+        // 鼠标移到可点击矢量上时切换指针样式
+        m.on('mousemove', (e) => {
+          const hit = m.queryRenderedFeatures(e.point).some(
+            (f) => f.layer && f.layer.type !== 'background',
+          )
+          m.getCanvas().style.cursor = hit ? 'pointer' : ''
+        })
       })
 
       map.current = m
@@ -935,6 +970,7 @@ export default function Console() {
                         if (item.label === 'AIS Playback') setAisPlaybackOpen(true)
                         if (item.label === 'Data Manager') setDataManagerOpen(true)
                         if (item.label === 'Layer Manager') setLayerManagerOpen(true)
+                        if (item.label === 'Ship Analysis') setStatsPanelOpen(true)
                       }}
                       className="flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
                     >
@@ -1006,6 +1042,48 @@ export default function Console() {
         </div>
       )}
 
+      {/* ── Clicked Vector Feature Properties ── */}
+      {clickedFeature && (
+        <div className="absolute bottom-12 left-2 z-30 w-[280px] max-h-[60vh] overflow-auto rounded-xl border border-white/50 bg-white/85 px-4 py-3 shadow-xl backdrop-blur-md text-slate-700">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <MapPin className="h-4 w-4 text-blue-600" />
+              Vector Properties
+            </div>
+            <button
+              onClick={() => setClickedFeature(null)}
+              className="rounded p-1 text-slate-400 hover:bg-slate-900/10 hover:text-slate-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mb-2 space-y-0.5 text-[11px] text-slate-500">
+            <div>Layer: <span className="font-mono text-slate-700">{clickedFeature.layerId}</span></div>
+            <div>Source: <span className="font-mono text-slate-700">{clickedFeature.sourceId}</span></div>
+            <div>Geometry: <span className="font-mono text-slate-700">{clickedFeature.geometryType}</span></div>
+            <div>Coordinates: {clickedFeature.lat.toFixed(5)}°, {clickedFeature.lng.toFixed(5)}°</div>
+          </div>
+          <div className="border-t border-slate-900/10 pt-2">
+            {Object.keys(clickedFeature.properties).length === 0 ? (
+              <div className="text-xs text-slate-400">(No property fields for this feature)</div>
+            ) : (
+              <table className="w-full text-xs">
+                <tbody>
+                  {Object.entries(clickedFeature.properties).map(([k, v]) => (
+                    <tr key={k} className="border-b border-slate-900/5 last:border-0">
+                      <td className="py-0.5 pr-2 align-top font-medium text-slate-500">{k}</td>
+                      <td className="py-0.5 align-top font-mono text-slate-800 break-all">
+                        {String(v)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Error Overlay ── */}
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-30">
@@ -1046,6 +1124,13 @@ export default function Console() {
           }}
           onLayersChange={(layers) => setActiveLayers(layers)}
           onLayerFocus={(layerId) => setFocusedLayerId(layerId)}
+        />
+      )}
+
+      {/* ── Stats Panel (断面 / 航道统计) ── */}
+      {statsPanelOpen && (
+        <StatsPanel
+          onClose={() => setStatsPanelOpen(false)}
         />
       )}
 

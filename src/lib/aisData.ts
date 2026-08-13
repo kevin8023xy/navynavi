@@ -3,7 +3,7 @@ import { inflate } from 'pako';
 import { openDB } from 'idb';
 
 const DB_NAME = 'ais-db';
-const DB_VERSION = 2; // Increment to force cache refresh
+const DB_VERSION = 3; // Increment to force cache refresh (v2 cached broken COG from ais.csv.gz)
 const CSV_URL = '/data/ais.csv.gz';
 const WRITE_BATCH_SIZE = 5000;
 
@@ -247,4 +247,59 @@ export async function queryTracks(start: number, end: number): Promise<AisRecord
   const index = tx.store.index('byTimestamp');
   const range = IDBKeyRange.bound(start, end);
   return index.getAll(range);
+}
+
+// ---------------------------------------------------------------------------
+// 播放/统计前的船舶过滤（对应需求：3kn 以下、渔船/拖轮不显示）。
+// 数据仅有 Navigational Status，无 shiptype，故"渔船/拖轮"按 status 近似：
+//   7  = engaged in fishing（渔船）
+//   11 = power-driven vessel towing（拖带，近似拖轮）
+// 为避免误删"进港减速的真实船"，3kn 以下按「全程 SOG 均值 < MIN_SOG_KN」判定，
+// 而非单点 < 3kn；status 需「整条船都属该类」才排除。
+// ---------------------------------------------------------------------------
+export interface ShipFilterOptions {
+  minSogKn?: number // 默认 3：全程均值低于此速度的船不显示
+  excludeFishing?: boolean // 默认 true：排除渔船(status=7)
+  excludeTowing?: boolean // 默认 true：排除拖带(status=11)
+}
+
+const FISHING_STATUS = 7
+const TOWING_STATUS = 11
+
+// 返回应保留的 MMSI 集合。
+export function filterVesselsByMmsi(
+  records: AisRecord[],
+  opts: ShipFilterOptions = {},
+): Set<number> {
+  const minSog = opts.minSogKn ?? 3
+  const excludeFishing = opts.excludeFishing ?? true
+  const excludeTowing = opts.excludeTowing ?? true
+
+  const byMmsi = new Map<number, AisRecord[]>()
+  for (const r of records) {
+    if (!byMmsi.has(r.mmsi)) byMmsi.set(r.mmsi, [])
+    byMmsi.get(r.mmsi)!.push(r)
+  }
+
+  const keep = new Set<number>()
+  for (const [mmsi, list] of byMmsi) {
+    let sogSum = 0
+    let sogN = 0
+    let allFishing = list.length > 0
+    let allTowing = list.length > 0
+    for (const r of list) {
+      if (r.sog != null) {
+        sogSum += r.sog
+        sogN++
+      }
+      if (excludeFishing && r.status !== FISHING_STATUS) allFishing = false
+      if (excludeTowing && r.status !== TOWING_STATUS) allTowing = false
+    }
+    const meanSog = sogN > 0 ? sogSum / sogN : 0
+    if (meanSog < minSog) continue // 全程慢速船：排除
+    if (excludeFishing && allFishing) continue // 整条都是渔船：排除
+    if (excludeTowing && allTowing) continue // 整条都是拖带：排除
+    keep.add(mmsi)
+  }
+  return keep
 }

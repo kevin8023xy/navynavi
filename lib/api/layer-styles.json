@@ -1,4 +1,49 @@
 {
+  "800020138": {
+    "color": "#98D8C8",
+    "width": 2,
+    "opacity": 0.8,
+    "dashArray": [
+      5,
+      5
+    ]
+  },
+  "800086321": {
+    "color": "#FF6B6B",
+    "width": 2,
+    "opacity": 0.8,
+    "dashArray": [
+      5,
+      5
+    ]
+  },
+  "994131201": {
+    "color": "#45B7D1",
+    "width": 2,
+    "opacity": 0.8,
+    "dashArray": [
+      5,
+      5
+    ]
+  },
+  "994136230": {
+    "color": "#82E0AA",
+    "width": 2,
+    "opacity": 0.8,
+    "dashArray": [
+      5,
+      5
+    ]
+  },
+  "994136235": {
+    "color": "#98D8C8",
+    "width": 2,
+    "opacity": 0.8,
+    "dashArray": [
+      5,
+      5
+    ]
+  },
   "999001264": {
     "color": "#99c328",
     "width": 2,
