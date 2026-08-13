@@ -6,7 +6,8 @@
   "functions": {
     "api/*.js": {
       "maxDuration": 60,
-      "excludeFiles": "{lib/api/record1.json,lib/api/records.json,public/data/ais.csv.gz,output/**,ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv}"
+      "excludeFiles": "{lib/api/record1.json,lib/api/records.json,public/data/ais.csv.gz,output/**,ship_tracks_2021-10-01_to_2021-10-01_191ships_207803positions.csv}",
+      "includeFiles": "public/data/{fairways,zone-polygon}.geojson"
     }
   },
   "rewrites": [
