@@ -75,6 +75,13 @@ function main() {
 
   records.sort((a, b) => a.timestamp - b.timestamp);
 
+  // Vercel 构建时跳过 record1.json：函数运行时用 lib/api/data_10k.js，
+  // 该 200MB+ JSON 会被 Vercel 文件追踪打进每个 serverless 函数包导致部署失败。
+  if (process.env.VERCEL === '1') {
+    console.log('[build-data] Vercel build detected, skipping record1.json');
+    return;
+  }
+
   console.log(`[build-data] Writing ${records.length} records to JSON...`);
   fs.writeFileSync(JSON_PATH, JSON.stringify(records));
 
