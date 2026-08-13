@@ -1,8 +1,8 @@
 'use strict';
 
-const { getAllRecords } = require('../lib/api/data');
+const { getAllRecords, ensureLoaded } = require('../lib/api/data');
 
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   console.log('[health] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -17,6 +17,7 @@ module.exports = function handler(req, res) {
   }
 
   try {
+    await ensureLoaded();
     const records = getAllRecords();
     return res.json({
       status: 'ok',

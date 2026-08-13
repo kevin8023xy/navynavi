@@ -1,6 +1,6 @@
 'use strict';
 
-const { queryTracks } = require('../lib/api/data');
+const { queryTracks, ensureLoaded } = require('../lib/api/data');
 const { bearing, haversine, angularDiff } = require('../lib/api/geometry');
 const {
   closestOnLine,
@@ -84,7 +84,7 @@ function findNeighborPair(byMmsi, refMmsi, t, opts) {
 }
 
 // 主处理函数：在两船之间插入一条虚拟船，沿航道中心线 S 形汇入。
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -93,6 +93,7 @@ module.exports = function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    await ensureLoaded();
     const q = req.query;
     const refMmsi = q.ref_mmsi ? Number(q.ref_mmsi) : NaN;
     const t = q.t ? Number(q.t) : NaN;

@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { queryTracks } = require('../lib/api/data');
+const { queryTracks, ensureLoaded } = require('../lib/api/data');
 const {
   pointInPolygon,
   projectOntoAxis,
@@ -69,7 +69,7 @@ function interpolateAt(tracksByMmsi, mmsi, t) {
   return arr[arr.length - 1];
 }
 
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -82,6 +82,7 @@ module.exports = function handler(req, res) {
   }
 
   try {
+    await ensureLoaded();
     const {
       start_time,
       end_time,

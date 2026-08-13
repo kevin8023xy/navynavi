@@ -1,8 +1,8 @@
 'use strict';
 
-const { queryTracks } = require('../lib/api/data');
+const { queryTracks, ensureLoaded } = require('../lib/api/data');
 
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   console.log('[tracks] handler called', { method: req.method, url: req.url, env: process.env.VERCEL_ENV });
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -17,6 +17,7 @@ module.exports = function handler(req, res) {
   }
 
   try {
+    await ensureLoaded();
     const { mmsi, start_time, end_time, page, page_size, bbox } = req.query;
 
     const result = queryTracks({

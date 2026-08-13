@@ -8,7 +8,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { queryTracks } = require('../lib/api/data');
+const { queryTracks, ensureLoaded } = require('../lib/api/data');
 const booleanPointInPolygon = require('@turf/boolean-point-in-polygon').default;
 const { point: turfPoint } = require('@turf/helpers');
 
@@ -61,7 +61,7 @@ function polygonBbox(geom) {
   return { minLng, minLat, maxLng, maxLat };
 }
 
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -70,6 +70,7 @@ module.exports = function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    await ensureLoaded();
     const q = req.query;
     const start_time = q.start_time ? Number(q.start_time) : undefined;
     const end_time = q.end_time ? Number(q.end_time) : undefined;

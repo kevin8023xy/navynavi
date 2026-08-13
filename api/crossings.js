@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { queryTracks } = require('../lib/api/data');
+const { queryTracks, ensureLoaded } = require('../lib/api/data');
 const { segmentsIntersect, bearing, haversine } = require('../lib/api/geometry');
 
 // 读取断面线坐标（[lng,lat] 数组）。优先从 public/data 下读取，
@@ -43,7 +43,7 @@ const LINES = {
   red: { id: 'red', label: '红线', file: 'line1-2.geojson' },
 };
 
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -56,6 +56,7 @@ module.exports = function handler(req, res) {
   }
 
   try {
+    await ensureLoaded();
     const { mmsi, start_time, end_time, lines } = req.query;
 
     if (!mmsi || typeof mmsi !== 'string') {
