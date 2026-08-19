@@ -17,7 +17,7 @@ const uploadHandler = require(path.join(API_DIR, 'upload.js'));
 const deleteHandler = require(path.join(API_DIR, 'delete.js'));
 const rebuildHandler = require(path.join(API_DIR, 'rebuild.js'));
 const statsHandler = require(path.join(API_DIR, 'stats.js'));
-const shipsHandler = require(path.join(API_DIR, 'ships.js'));
+const sharedGetHandler = require(path.join(API_DIR, '[route].js'));
 const tracksHandler = require(path.join(API_DIR, 'tracks.js'));
 const stylesHandler = require(path.join(API_DIR, 'styles.js'));
 const crossingsHandler = require(path.join(API_DIR, 'crossings.js'));
@@ -39,8 +39,10 @@ app.post('/api/rebuild', rebuildHandler);
 app.get('/api/stats.js', statsHandler);
 app.get('/api/stats', statsHandler);
 
-app.get('/api/ships.js', shipsHandler);
-app.get('/api/ships', shipsHandler);
+app.get('/api/health.js', sharedGetHandler);
+app.get('/api/health', sharedGetHandler);
+app.get('/api/ships.js', sharedGetHandler);
+app.get('/api/ships', sharedGetHandler);
 
 app.get('/api/tracks.js', tracksHandler);
 app.get('/api/tracks', tracksHandler);
