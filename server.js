@@ -24,6 +24,7 @@ const crossingsHandler = require(path.join(API_DIR, 'crossings.js'));
 const spacingHandler = require(path.join(API_DIR, 'spacing.js'));
 const injectHandler = require(path.join(API_DIR, 'inject.js'));
 const zoneStatsHandler = require(path.join(API_DIR, 'zone-stats.js'));
+const insertionStatsHandler = require(path.join(API_DIR, 'insertion-stats.js'));
 
 // 定义路由（支持带/不带 .js 后缀）
 app.post('/api/upload.js', uploadHandler);
@@ -57,6 +58,8 @@ app.get('/api/inject', injectHandler);
 
 app.get('/api/zone-stats.js', zoneStatsHandler);
 app.get('/api/zone-stats', zoneStatsHandler);
+app.get('/api/insertion-stats.js', insertionStatsHandler);
+app.get('/api/insertion-stats', insertionStatsHandler);
 app.post('/api/styles', stylesHandler);
 
 // 处理 OPTIONS 请求

@@ -15,6 +15,24 @@ interface ZoneShip {
   fairwayCount: number
 }
 
+interface InsertionEvent {
+  mmsi: number
+  fairwayId: string
+  entryIso: string
+  entryLng: number
+  entryLat: number
+  entrySogKn: number
+  entryCogDeg: number | null
+  aisGapSeconds: number
+  zones: string[]
+}
+
+interface InsertionSummary {
+  uniqueShipCount: number
+  insertionEventCount: number
+  averageEntrySpeedKn: number | null
+}
+
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 function dateToLocalDateTimeString(d: Date): string {
@@ -52,7 +70,7 @@ function downloadCsv(filename: string, rows: (string | number | null)[][]) {
 }
 
 export default function StatsPanel({ onClose }: StatsPanelProps) {
-  const [tab, setTab] = useState<'zone'>('zone')
+  const [tab, setTab] = useState<'zone' | 'insertion'>('zone')
   const [startTime, setStartTime] = useState<string>('')
   const [endTime, setEndTime] = useState<string>('')
   const [zoneMinSog, setZoneMinSog] = useState<string>('3')
@@ -61,6 +79,8 @@ export default function StatsPanel({ onClose }: StatsPanelProps) {
 
   const [zoneShips, setZoneShips] = useState<ZoneShip[]>([])
   const [zoneSummary, setZoneSummary] = useState<any>(null)
+  const [insertionEvents, setInsertionEvents] = useState<InsertionEvent[]>([])
+  const [insertionSummary, setInsertionSummary] = useState<InsertionSummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string>('')
   const [msgKind, setMsgKind] = useState<'error' | 'warn' | 'info'>('error')
@@ -115,8 +135,61 @@ export default function StatsPanel({ onClose }: StatsPanelProps) {
     downloadCsv('zone_stats.csv', rows)
   }
 
+  const runInsertionStats = async () => {
+    setLoading(true)
+    setMsg('')
+    try {
+      const params = new URLSearchParams()
+      const s = toUnixLocal(startTime)
+      const e = toUnixLocal(endTime)
+      if (s != null) params.set('start_time', String(s))
+      if (e != null) params.set('end_time', String(e))
+      params.set('min_sog', zoneMinSog || '0')
+      params.set('exclude_fishing', zoneExcludeFishing ? '1' : '0')
+      params.set('exclude_towing', zoneExcludeTowing ? '1' : '0')
+      const res = await fetch(`${API_BASE}/api/insertion-stats?${params.toString()}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMsg(data.error || 'Request failed')
+        setInsertionEvents([])
+        setInsertionSummary(null)
+        return
+      }
+      setInsertionEvents(data.events || [])
+      setInsertionSummary(data.summary || null)
+      if (!data.events || data.events.length === 0) {
+        setMsg('No mid-route insertion events found in the current range')
+        setMsgKind('info')
+      }
+    } catch (err: any) {
+      setMsg(err.message || 'Network error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const exportInsertionStats = () => {
+    const rows: (string | number | null)[][] = [
+      ['MMSI', 'Fairway', 'Entry time', 'Entry SOG (kn)', 'Entry COG (deg)', 'Longitude', 'Latitude', 'AIS gap (s)', 'Zones'],
+      ...insertionEvents.map((event) => [
+        event.mmsi,
+        event.fairwayId,
+        event.entryIso,
+        event.entrySogKn.toFixed(2),
+        event.entryCogDeg == null ? null : event.entryCogDeg.toFixed(1),
+        event.entryLng.toFixed(6),
+        event.entryLat.toFixed(6),
+        event.aisGapSeconds,
+        event.zones.join('|'),
+      ]),
+    ]
+    downloadCsv('insertion_stats.csv', rows)
+  }
+
   return (
-    <div className="absolute right-3 top-3 z-20 w-[440px] max-h-[85vh] overflow-auto rounded-xl border border-white/50 bg-white/70 px-4 py-3 shadow-xl backdrop-blur-md text-slate-700">
+    <div className="absolute right-3 top-12 z-20 w-[440px] max-h-[calc(100vh-4.5rem)] overflow-auto rounded-xl border border-white/50 bg-white/70 px-4 py-3 shadow-xl backdrop-blur-md text-slate-700">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-slate-800" />
@@ -134,6 +207,12 @@ export default function StatsPanel({ onClose }: StatsPanelProps) {
           onClick={() => setTab('zone')}
         >
           Zone Stats
+        </button>
+        <button
+          className={`px-3 py-1.5 text-sm ${tab === 'insertion' ? 'border-b-2 border-slate-700 font-semibold' : 'text-slate-400'}`}
+          onClick={() => setTab('insertion')}
+        >
+          Mid-route Insertions
         </button>
       </div>
 
@@ -169,10 +248,12 @@ export default function StatsPanel({ onClose }: StatsPanelProps) {
         </div>
       </div>
 
-      {tab === 'zone' && (
+      {(tab === 'zone' || tab === 'insertion') && (
         <div className="space-y-2 mb-3">
           <label className="block text-xs text-slate-500">
-            Ships entering fairways by MMSI, and the zone faces they passed through
+            {tab === 'zone'
+              ? 'Ships entering fairways by MMSI, and the zone faces they passed through'
+              : 'Ships entering a fairway through a side boundary, with entry speed'}
           </label>
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500">Min SOG (kn)</label>
@@ -200,11 +281,11 @@ export default function StatsPanel({ onClose }: StatsPanelProps) {
             </label>
           </div>
           <button
-            onClick={runZoneStats}
+            onClick={tab === 'zone' ? runZoneStats : runInsertionStats}
             disabled={loading}
             className="w-full rounded bg-slate-700 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {loading ? 'Running…' : 'Run Zone Stats'}
+            {loading ? 'Running…' : tab === 'zone' ? 'Run Zone Stats' : 'Run Insertion Stats'}
           </button>
         </div>
       )}
@@ -251,6 +332,43 @@ export default function StatsPanel({ onClose }: StatsPanelProps) {
                     <td className="px-1 py-1">{z.fairways.join(', ')}</td>
                     <td className="px-1 py-1">{z.zones.join(', ')}</td>
                     <td className="px-1 py-1 text-right tabular-nums">{z.points}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'insertion' && insertionSummary && (
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-slate-500">
+              {insertionSummary.uniqueShipCount} ships / {insertionSummary.insertionEventCount} events / Avg {insertionSummary.averageEntrySpeedKn == null ? '–' : insertionSummary.averageEntrySpeedKn.toFixed(2)} kn
+            </span>
+            <button onClick={exportInsertionStats} className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900">
+              <Download className="h-3 w-3" /> Export CSV
+            </button>
+          </div>
+          <div className="overflow-auto max-h-[40vh] border border-white/40 rounded">
+            <table className="w-full text-xs">
+              <thead className="bg-white/60 sticky top-0">
+                <tr>
+                  <th className="px-1 py-1 text-left">MMSI</th>
+                  <th className="px-1 py-1 text-left">Fairway</th>
+                  <th className="px-1 py-1 text-left">Entry Time</th>
+                  <th className="px-1 py-1 text-right">SOG (kn)</th>
+                  <th className="px-1 py-1 text-left">Zones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {insertionEvents.map((event, index) => (
+                  <tr key={`${event.mmsi}-${event.entryIso}-${index}`} className="border-t border-white/30">
+                    <td className="px-1 py-1 tabular-nums">{event.mmsi}</td>
+                    <td className="px-1 py-1">{event.fairwayId}</td>
+                    <td className="px-1 py-1 whitespace-nowrap">{new Date(event.entryIso).toLocaleString()}</td>
+                    <td className="px-1 py-1 text-right tabular-nums">{event.entrySogKn.toFixed(2)}</td>
+                    <td className="px-1 py-1">{event.zones.join(', ')}</td>
                   </tr>
                 ))}
               </tbody>
